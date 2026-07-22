@@ -35,10 +35,25 @@ def _cnpj(row: dict) -> str:
         return ""
 
 
-def _cod4(codigo) -> str:
-    """'6912-01' / '6912 01' / '6912' → '6912' (base de join do CR-04/05)."""
-    digitos = "".join(c for c in str(codigo or "") if c.isdigit())
-    return digitos[:4]
+import re
+
+_RE_COD_SUB = re.compile(r"(\d{3,4})\s*[-–]\s*(\d{2})\b")
+_RE_COD4 = re.compile(r"(\d{4})")
+
+
+def _norm_codigo(codigo) -> str:
+    """Porta o _conc_norm_codigo do v5: preserva o sub-código quando existe.
+
+    '1082-01 - CP Segurados' → '1082-01' | 'COFINS | 2172 - ...' → '2172'
+    Os cruzamentos casam pela base de 4 dígitos; o sub-código preservado
+    aqui mantém a informação da fonte.
+    """
+    s = str(codigo or "").strip()
+    m = _RE_COD_SUB.search(s)
+    if m:
+        return f"{m.group(1)}-{m.group(2)}"
+    m = _RE_COD4.search(s)
+    return m.group(1) if m else ""
 
 
 def fatos_darf(rows: list[dict], arquivo: str = "") -> list[FatoFiscal]:
@@ -57,7 +72,7 @@ def fatos_darf(rows: list[dict], arquivo: str = "") -> list[FatoFiscal]:
             fonte=Fonte.DAS if eh_das else Fonte.DARF,
             natureza=Natureza.PAGO,
             valor=_num(r.get("principal")),
-            codigo_receita=_cod4(r.get("codigo")),
+            codigo_receita=_norm_codigo(r.get("codigo")),
             arquivo_origem=arquivo or r.get("_source", ""),
             detalhes={
                 "numero_doc": r.get("numero_doc", ""),
@@ -84,7 +99,7 @@ def fatos_dctf(rows: list[dict], arquivo: str = "") -> list[FatoFiscal]:
             fonte=Fonte.DCTF,
             natureza=Natureza.DECLARADO,
             valor=_num(r.get("debito_apurado")),
-            codigo_receita=_cod4(r.get("codigo_receita")),
+            codigo_receita=_norm_codigo(r.get("codigo_receita")),
             arquivo_origem=arquivo or r.get("_source", ""),
             detalhes={
                 "numero_declaracao": r.get("numero_declaracao", ""),
@@ -113,7 +128,7 @@ def fatos_dctfweb(rows: list[dict], arquivo: str = "") -> list[FatoFiscal]:
             fonte=Fonte.DCTFWEB,
             natureza=Natureza.DECLARADO,
             valor=_num(r.get("debito_apurado")),
-            codigo_receita=_cod4(r.get("codigo_receita")),
+            codigo_receita=_norm_codigo(r.get("codigo_receita")),
             arquivo_origem=arquivo or r.get("_source", ""),
             detalhes={
                 "categoria": r.get("categoria", ""),
@@ -133,14 +148,27 @@ _TRIBUTOS_SIMPLES = ("irpj", "csll", "cofins", "pis", "cpp", "icms", "ipi", "iss
 
 
 def fatos_simples(rows: list[dict], arquivo: str = "") -> list[FatoFiscal]:
-    """PGDAS-D: um DECLARADO por tributo segregado no DAS + um PAGO quando há
-    DAS pago. O detalhamento (anexo, fator r, RBT12) alimenta SN-01..04."""
+    """PGDAS-D (semântica do triplo v5): cada tributo segregado vira um
+    DECLARADO com pseudo-código 'SIMPLES-<TRIB>' — impede casamento indevido
+    com DARF/DCTF de outro regime e faz confissão × quitação do Simples
+    casarem entre si. O DAS pago é RATEADO entre os tributos na proporção do
+    débito (PAGO, fonte DAS, mesmo pseudo-código). Apurações duplicadas
+    (mesmo nº de declaração em arquivos distintos) são descartadas."""
     fatos = []
+    vistos: set = set()
     for r in rows:
         cnpj = _cnpj(r)
         if not cnpj:
             continue
         comp = r.get("competencia_teste") or r.get("competencia", "")
+        chave_ap = (r.get("num_declaracao") or "").strip() or f"{cnpj}|{comp}"
+        if chave_ap in vistos:
+            continue
+        vistos.add(chave_ap)
+
+        total_deb = _num(r.get("total_debito"))
+        das_valor = _num(r.get("das_valor_pago"))
+        tem_das = bool(r.get("das_pago")) or das_valor > 0
         detalhes_base = {
             "anexo": r.get("anexo", ""),
             "fator_r": r.get("fator_r", ""),
@@ -150,24 +178,29 @@ def fatos_simples(rows: list[dict], arquivo: str = "") -> list[FatoFiscal]:
             "receita_servicos": _num(r.get("receita_servicos")),
             "num_declaracao": r.get("num_declaracao", ""),
             "aliquota_efetiva": r.get("aliquota_efetiva", ""),
+            "total_debito": total_deb,
         }
         for trib in _TRIBUTOS_SIMPLES:
-            valor = _num(r.get(trib))
-            if valor:
+            deb = _num(r.get(trib))
+            if deb <= 0:
+                continue
+            pseudo = f"SIMPLES-{trib.upper()}"
+            fatos.append(FatoFiscal(
+                cnpj=cnpj, competencia=comp, tributo=trib.upper(),
+                fonte=Fonte.PGDAS_D, natureza=Natureza.DECLARADO,
+                valor=deb, codigo_receita=pseudo,
+                arquivo_origem=arquivo or r.get("_source", ""),
+                detalhes=detalhes_base))
+            if tem_das and total_deb > 0:
                 fatos.append(FatoFiscal(
                     cnpj=cnpj, competencia=comp, tributo=trib.upper(),
-                    fonte=Fonte.PGDAS_D, natureza=Natureza.DECLARADO,
-                    valor=valor, arquivo_origem=arquivo or r.get("_source", ""),
-                    detalhes=detalhes_base))
-        das_pago = _num(r.get("das_valor_pago"))
-        if das_pago:
-            fatos.append(FatoFiscal(
-                cnpj=cnpj, competencia=comp, tributo="SIMPLES_DAS",
-                fonte=Fonte.DAS, natureza=Natureza.PAGO,
-                valor=das_pago, arquivo_origem=arquivo or r.get("_source", ""),
-                detalhes={"das_numero": r.get("das_numero", ""),
-                          "das_dt_pagamento": r.get("das_dt_pagamento", ""),
-                          "total_debito": _num(r.get("total_debito"))}))
+                    fonte=Fonte.DAS, natureza=Natureza.PAGO,
+                    valor=round(das_valor * deb / total_deb, 2),
+                    codigo_receita=pseudo,
+                    arquivo_origem=arquivo or r.get("_source", ""),
+                    detalhes={"das_numero": r.get("das_numero", ""),
+                              "das_dt_pagamento": r.get("das_dt_pagamento", ""),
+                              "rateio_de": das_valor}))
     return fatos
 
 
@@ -186,7 +219,7 @@ def fatos_efd_contribuicoes(rows: list[dict], arquivo: str = "") -> list[FatoFis
             fonte=Fonte.EFD_CONTRIBUICOES,
             natureza=Natureza.ESCRITURADO,
             valor=_num(r.get("contrib_a_recolher")),
-            codigo_receita=_cod4(r.get("codigo_receita")),
+            codigo_receita=_norm_codigo(r.get("codigo_receita")),
             arquivo_origem=arquivo or r.get("_source", ""),
             detalhes={
                 "regime": r.get("regime", ""),
@@ -214,9 +247,10 @@ def fatos_perdcomp(rows: list[dict], arquivo: str = "") -> list[FatoFiscal]:
                 fonte=Fonte.PERDCOMP,
                 natureza=Natureza.PLEITEADO,
                 valor=_num(r.get("valor_original")),
-                codigo_receita=_cod4(r.get("codigo_credito")),
+                codigo_receita=_norm_codigo(r.get("codigo_credito")),
                 arquivo_origem=arquivo or r.get("_source", ""),
                 detalhes={
+                    "codigo_credito": str(r.get("codigo_credito", "")),
                     "numero_perdcomp": r.get("numero_perdcomp", ""),
                     "tipo_pedido": r.get("tipo_pedido", ""),
                     "data_transmissao": r.get("data_transmissao", ""),
@@ -235,7 +269,7 @@ def fatos_perdcomp(rows: list[dict], arquivo: str = "") -> list[FatoFiscal]:
             fonte=Fonte.PERDCOMP,
             natureza=Natureza.COMPENSADO,
             valor=_num(r.get("valor_total")) or _num(r.get("valor_original")),
-            codigo_receita=_cod4(r.get("codigo_receita_debito")),
+            codigo_receita=_norm_codigo(r.get("codigo_receita_debito") or r.get("tipo")),
             arquivo_origem=arquivo or r.get("_source", ""),
             detalhes={
                 "numero_perdcomp": r.get("numero_perdcomp", ""),

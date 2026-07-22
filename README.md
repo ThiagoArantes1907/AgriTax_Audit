@@ -26,7 +26,8 @@ audit/coleta        CB — robôs e-CAC (Selenium) e ReceitaNetBX          [M4]
 audit/parsers       fontes → fatos: PER/DCOMP, DARF/DAS, DCTF (OCR),
                     DCTFWeb, PGDAS-D, EFD-Contribuições, ECD (absorvidos
                     do AgriTax Audit v5) + central de estruturação        [OK]
-audit/cruzamentos   CR-01..08                                           [M2]
+audit/cruzamentos   CR-04 (EFD × DCTF/DCTFWeb) e CR-05 (confissão ×
+                    quitação, 6 vias) gerando Achados R1/R2/R3/R7      [OK]
 audit/reperformance rp/ (Real/Presumido) · sn/ (Simples Nacional)       [M5+]
 audit/pendencias    PE-01..05                                           [M3]
 audit/entregaveis   matriz de achados, relatório, mapa de créditos      [M7]

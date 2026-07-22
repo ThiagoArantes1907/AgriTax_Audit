@@ -46,7 +46,7 @@ def test_fatos_darf():
     assert f[0].natureza.value == "PAGO"
     assert f[0].fonte.value == "DARF"
     assert f[0].valor == 1000.0
-    assert f[0].codigo_receita == "6912"
+    assert f[0].codigo_receita == "6912-01"   # sub-código preservado (chave v5)
     assert f[0].detalhes["total_item"] == 1015.0
 
 
@@ -67,11 +67,13 @@ def test_fatos_dctf_e_chave_casa_com_efd():
     efd_rows = [{"cnpj": CNPJ, "codigo_receita": "6912", "tributo": "PIS",
                  "competencia_teste": "2026.02", "contrib_a_recolher": 1000.0,
                  "regime": "Não-Cumulativo", "debito_apurado": 1200.0}]
+    from audit.cruzamentos.motor import codigo_base
     fd = fatos.fatos_dctf(dctf_rows)[0]
     fe = fatos.fatos_efd_contribuicoes(efd_rows)[0]
-    # base do CR-04: mesmo código-base e competência dos dois lados
-    assert (fd.cnpj, fd.codigo_receita, fd.competencia) == \
-           (fe.cnpj, fe.codigo_receita, fe.competencia)
+    # DCTF preserva o sub-código; o CR-04 casa pela base de 4 dígitos
+    assert fd.codigo_receita == "6912-01" and fe.codigo_receita == "6912"
+    assert (fd.cnpj, codigo_base(fd.codigo_receita), fd.competencia) == \
+           (fe.cnpj, codigo_base(fe.codigo_receita), fe.competencia)
     assert fd.natureza.value == "DECLARADO" and fe.natureza.value == "ESCRITURADO"
 
 
@@ -80,15 +82,20 @@ def test_fatos_simples_segrega_por_tributo():
              "anexo": "I", "fator_r": "", "rbt12": "1.200.000,00", "rpa": "100.000,00",
              "pis": "270,00", "cofins": "1.247,00", "icms": "3.400,00",
              "irpj": 0, "csll": 0, "cpp": "4.150,00", "ipi": 0, "iss": 0,
-             "das_valor_pago": "9.067,00", "das_numero": "123", "total_debito": "9.067,00"}]
+             "das_pago": True, "das_valor_pago": "9.067,00", "das_numero": "123",
+             "num_declaracao": "AP9", "total_debito": "9.067,00"}]
     f = fatos.fatos_simples(rows)
-    tributos = {x.tributo: x for x in f}
-    assert set(tributos) == {"PIS", "COFINS", "ICMS", "CPP", "SIMPLES_DAS"}
-    assert tributos["ICMS"].natureza.value == "DECLARADO"
-    assert tributos["ICMS"].fonte.value == "PGDAS_D"
-    assert tributos["ICMS"].detalhes["anexo"] == "I"
-    assert tributos["SIMPLES_DAS"].natureza.value == "PAGO"
-    assert tributos["SIMPLES_DAS"].valor == 9067.0
+    declarados = {x.tributo: x for x in f if x.natureza.value == "DECLARADO"}
+    pagos = {x.tributo: x for x in f if x.natureza.value == "PAGO"}
+    assert set(declarados) == {"PIS", "COFINS", "ICMS", "CPP"} == set(pagos)
+    assert declarados["ICMS"].fonte.value == "PGDAS_D"
+    assert declarados["ICMS"].codigo_receita == "SIMPLES-ICMS"
+    assert declarados["ICMS"].detalhes["anexo"] == "I"
+    assert pagos["ICMS"].fonte.value == "DAS"
+    assert pagos["ICMS"].codigo_receita == "SIMPLES-ICMS"
+    # DAS = total do débito → rateio devolve o débito exato de cada tributo
+    assert pagos["ICMS"].valor == 3400.0
+    assert round(sum(x.valor for x in pagos.values()), 2) == 9067.0
 
 
 def test_fatos_perdcomp_debitos_e_creditos():
@@ -104,7 +111,7 @@ def test_fatos_perdcomp_debitos_e_creditos():
     assert set(por_nat) == {"PLEITEADO", "COMPENSADO"}
     assert por_nat["PLEITEADO"].valor == 38590.45
     assert por_nat["PLEITEADO"].competencia == "2022.1T"
-    assert por_nat["COMPENSADO"].codigo_receita == "5856"
+    assert por_nat["COMPENSADO"].codigo_receita == "5856-01"
     assert por_nat["COMPENSADO"].valor == 800.0
 
 

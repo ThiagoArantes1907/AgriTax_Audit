@@ -33,7 +33,6 @@ BASE_ENGAJAMENTOS = Path(__file__).parent / "engajamentos"
 # fase → marco em que será implementada (docs/ARQUITETURA.md §6)
 _FASES_PENDENTES = {
     "coletar": "M4 (robôs e-CAC integrados + automação BX)",
-    "cruzar": "M2 (CR-04/05 com o motor de conciliação)",
     "reperformar": "M5/M6 (módulos RP e SN)",
     "pendencias": "M3 (parser Situação Fiscal + DTE)",
     "relatorio": "M7 (entregáveis com marca AgriTax)",
@@ -95,6 +94,22 @@ def cmd_estruturar(args) -> None:
         sys.exit(1)
 
 
+def cmd_cruzar(args) -> None:
+    from audit.cruzamentos.executor import cruzar_engajamento
+    engaj = _engaj_dir(args)
+    resumo = cruzar_engajamento(engaj)
+    total_achados = 0
+    for ref in ("CR-04", "CR-05"):
+        r = resumo.get(ref, {})
+        sits = ", ".join(f"{k}: {v}" for k, v in r.get("por_situacao", {}).items())
+        print(f"{ref}: {r.get('linhas', 0)} linha(s) → {r.get('achados', 0)} achado(s)"
+              + (f"  [{sits}]" if sits else ""))
+        total_achados += r.get("achados", 0)
+    if resumo.get("status_perdcomp"):
+        print(f"Planilha de status e-CAC: {resumo['status_perdcomp']} PER/DCOMP mapeados")
+    print(f"Matriz completa em: {engaj / 'achados'}  |  {total_achados} achado(s) no banco")
+
+
 def cmd_pendente(fase: str):
     def _run(args) -> None:
         _engaj_dir(args)  # valida que o engajamento existe
@@ -120,6 +135,8 @@ def main(argv: list[str] | None = None) -> None:
                              "CB-06: raw/** → custódia → parsers → SQLite")
     p_est.add_argument("--data-base", default="",
                        help="data-base das extrações e-CAC (AAAA-MM-DD)")
+    _com_engajamento("cruzar", cmd_cruzar,
+                     "CR-04/05: escriturado × declarado × pago/compensado")
     for fase, marco in _FASES_PENDENTES.items():
         _com_engajamento(fase, cmd_pendente(fase), f"[pendente — {marco}]")
 

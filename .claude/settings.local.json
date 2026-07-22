@@ -99,7 +99,13 @@
       "Bash(python -m pytest tests/test_retificadora_aplicador.py -q)",
       "Bash(find \"/c/Projetos/PIS COFINS COM GRAOS/data\" -iname \"*.txt\" 2>/dev/null | head -3; ls /c/AgriTaxAudit 2>/dev/null | head)",
       "Bash(python \"C:/Users/thiag/AppData/Local/Temp/claude/D--AgriTax-Audit04/ae5e12e5-16bf-4b78-b0ac-cc78c9abc821/scratchpad/gera_relatorio_santafe.py\")",
-      "Bash(git commit -q -m 'M1: parsers do AgriTax Audit v5 absorvidos + estruturacao para SQLite *)"
+      "Bash(git commit -q -m 'M1: parsers do AgriTax Audit v5 absorvidos + estruturacao para SQLite *)",
+      "Bash(export PYTHONIOENCODING=utf-8 PYTHONPATH=\"C:/Projetos/PIS COFINS COM GRAOS\")",
+      "Bash(git commit -q -m 'E10: frente de receitas nas retificadoras \\(tributar/aliq zero/suspensao\\) + relatorio tecnico da retificacao *)",
+      "Bash(python \"C:/Users/thiag/AppData/Local/Temp/claude/D--AgriTax-Audit04/ae5e12e5-16bf-4b78-b0ac-cc78c9abc821/scratchpad/investiga_rec_dv.py\")",
+      "Bash(python \"C:/Users/thiag/AppData/Local/Temp/claude/D--AgriTax-Audit04/ae5e12e5-16bf-4b78-b0ac-cc78c9abc821/scratchpad/investiga_rec_dv2.py\")",
+      "Bash(python -m pytest tests/test_cruzamentos.py::test_cr05_dcomp_cancelada_fica_fora -q)",
+      "Bash(python pipeline.py enquadrar --cliente DASA --cnpj 40943410000190 --out __TRACKED_VAR__/outputs_reais)"
     ]
   }
 }
