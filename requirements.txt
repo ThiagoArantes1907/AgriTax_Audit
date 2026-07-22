@@ -1,0 +1,8 @@
+pdfplumber
+openpyxl
+pytesseract
+pdf2image
+Pillow
+pyyaml
+pytest
+selenium
