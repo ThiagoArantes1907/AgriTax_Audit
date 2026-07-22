@@ -89,7 +89,17 @@
       "Bash(git commit -q -m 'M0: core da plataforma AgriTax Audit \\(PT-AF-003\\) *)",
       "Bash(git -C \"/c/Projetos/PIS COFINS COM GRAOS\" config user.name)",
       "Bash(git -C \"/c/Projetos/PIS COFINS COM GRAOS\" config user.email)",
-      "Bash(git -C \"/c/Projetos/PIS COFINS COM GRAOS\" log -1 --format='%an <%ae>')"
+      "Bash(git -C \"/c/Projetos/PIS COFINS COM GRAOS\" log -1 --format='%an <%ae>')",
+      "Bash(git config *)",
+      "Read(//c/Projetos/PIS COFINS COM GRAOS/.git/hooks/**)",
+      "mcp__claude-in-chrome__tabs_context_mcp",
+      "Bash(python -m pyflakes audit/parsers/*.py)",
+      "Bash(python -c \"import audit.parsers.dctf\")",
+      "Bash(python -m pytest tests/test_retificadora_aplicador.py::test_saida_consolidada_e_preservada -q)",
+      "Bash(python -m pytest tests/test_retificadora_aplicador.py -q)",
+      "Bash(find \"/c/Projetos/PIS COFINS COM GRAOS/data\" -iname \"*.txt\" 2>/dev/null | head -3; ls /c/AgriTaxAudit 2>/dev/null | head)",
+      "Bash(python \"C:/Users/thiag/AppData/Local/Temp/claude/D--AgriTax-Audit04/ae5e12e5-16bf-4b78-b0ac-cc78c9abc821/scratchpad/gera_relatorio_santafe.py\")",
+      "Bash(git commit -q -m 'M1: parsers do AgriTax Audit v5 absorvidos + estruturacao para SQLite *)"
     ]
   }
 }

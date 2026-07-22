@@ -40,7 +40,8 @@ class Natureza(str, Enum):
     ESCRITURADO = "ESCRITURADO"
     DECLARADO = "DECLARADO"
     PAGO = "PAGO"
-    COMPENSADO = "COMPENSADO"
+    COMPENSADO = "COMPENSADO"    # débito quitado via DCOMP
+    PLEITEADO = "PLEITEADO"      # crédito pedido em PER/DCOMP (lado do CR-06)
 
 
 @dataclass

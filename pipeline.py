@@ -33,7 +33,6 @@ BASE_ENGAJAMENTOS = Path(__file__).parent / "engajamentos"
 # fase → marco em que será implementada (docs/ARQUITETURA.md §6)
 _FASES_PENDENTES = {
     "coletar": "M4 (robôs e-CAC integrados + automação BX)",
-    "estruturar": "M1 (integração dos parsers do AgriTax Audit v5)",
     "cruzar": "M2 (CR-04/05 com o motor de conciliação)",
     "reperformar": "M5/M6 (módulos RP e SN)",
     "pendencias": "M3 (parser Situação Fiscal + DTE)",
@@ -80,6 +79,22 @@ def cmd_status(args) -> None:
         print("Achados     : " + ", ".join(f"{k}={v}" for k, v in res["achados_por_ref"].items()))
 
 
+def cmd_estruturar(args) -> None:
+    from audit.parsers.central import estruturar_engajamento
+    engaj = _engaj_dir(args)
+    res = estruturar_engajamento(engaj, data_base=args.data_base)
+    for p in res["processados"]:
+        print(f"  ✓ {p['arquivo']}  [{p['tipo']}]  {p['linhas']} linha(s) → {p['fatos']} fato(s)")
+    for i in res["ignorados"]:
+        print(f"  - {i['arquivo']}  ignorado: {i['motivo']}")
+    for e in res["erros"]:
+        print(f"  ✗ {e['arquivo']}  ERRO: {e['erro']}")
+    print(f"Total: {len(res['processados'])} arquivo(s), {res['fatos_gravados']} fato(s) gravados; "
+          f"{len(res['erros'])} erro(s).")
+    if res["erros"]:
+        sys.exit(1)
+
+
 def cmd_pendente(fase: str):
     def _run(args) -> None:
         _engaj_dir(args)  # valida que o engajamento existe
@@ -101,6 +116,10 @@ def main(argv: list[str] | None = None) -> None:
 
     _com_engajamento("novo", cmd_novo, "cria um engajamento (ficha do Anexo A)")
     _com_engajamento("status", cmd_status, "resumo do engajamento")
+    p_est = _com_engajamento("estruturar", cmd_estruturar,
+                             "CB-06: raw/** → custódia → parsers → SQLite")
+    p_est.add_argument("--data-base", default="",
+                       help="data-base das extrações e-CAC (AAAA-MM-DD)")
     for fase, marco in _FASES_PENDENTES.items():
         _com_engajamento(fase, cmd_pendente(fase), f"[pendente — {marco}]")
 

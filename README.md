@@ -23,7 +23,9 @@ reperformar → pendencias → relatorio` — habilitadas marco a marco (§6 da 
 audit/core          modelo canônico (FatoFiscal/Achado), domínio (CR/RP/SN/PE, riscos),
                     custódia (hash/manifesto — CB-03), ficha Anexo A, SQLite por engajamento
 audit/coleta        CB — robôs e-CAC (Selenium) e ReceitaNetBX          [M4]
-audit/parsers       fontes → fatos (absorção do AgriTax Audit v5)       [M1]
+audit/parsers       fontes → fatos: PER/DCOMP, DARF/DAS, DCTF (OCR),
+                    DCTFWeb, PGDAS-D, EFD-Contribuições, ECD (absorvidos
+                    do AgriTax Audit v5) + central de estruturação        [OK]
 audit/cruzamentos   CR-01..08                                           [M2]
 audit/reperformance rp/ (Real/Presumido) · sn/ (Simples Nacional)       [M5+]
 audit/pendencias    PE-01..05                                           [M3]
