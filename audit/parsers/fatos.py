@@ -214,6 +214,24 @@ def fatos_efd_contribuicoes(rows: list[dict], arquivo: str = "") -> list[FatoFis
         cnpj = _cnpj(r)
         if not cnpj:
             continue
+        if r.get("tipo_linha") == "credito":
+            fatos.append(FatoFiscal(
+                cnpj=cnpj,
+                competencia=r.get("competencia_teste", ""),
+                tributo=str(r.get("tributo", "")).strip(),
+                fonte=Fonte.EFD_CONTRIBUICOES,
+                natureza=Natureza.CREDITO,
+                valor=_num(r.get("sld_cred")),          # saldo após descontos = lastro
+                codigo_receita=str(r.get("codigo_receita", "")),
+                arquivo_origem=arquivo or r.get("_source", ""),
+                detalhes={
+                    "vl_cred": _num(r.get("vl_cred")),
+                    "vl_cred_disp": _num(r.get("vl_cred_disp")),
+                    "vl_cred_desc": _num(r.get("vl_cred_desc")),
+                    "base_calculo": _num(r.get("base_calculo")),
+                    "retificadora": bool(r.get("retificadora")),
+                }))
+            continue
         # linhas sem código = resumo zerado (competência sem débitos) — entram
         # para registrar cobertura da série e o flag de retificadora (CR-08)
         fatos.append(FatoFiscal(
@@ -265,6 +283,7 @@ def fatos_perdcomp(rows: list[dict], arquivo: str = "") -> list[FatoFiscal]:
                     "valor_utilizado": _num(r.get("valor_utilizado")),
                     "numero_pedido_vinculado": r.get("numero_pedido_vinculado", ""),
                     "retificador": r.get("retificador", ""),
+                    "numero_perdcomp_retificado": r.get("numero_perdcomp_retificado", ""),
                 }))
             continue
         if r.get("tipo_registro") != "Débito":
@@ -286,6 +305,7 @@ def fatos_perdcomp(rows: list[dict], arquivo: str = "") -> list[FatoFiscal]:
                 "valor_multa": _num(r.get("valor_multa")),
                 "valor_juros": _num(r.get("valor_juros")),
                 "numero_pedido_vinculado": r.get("numero_pedido_vinculado", ""),
+                "numero_perdcomp_retificado": r.get("numero_perdcomp_retificado", ""),
             }))
     return fatos
 

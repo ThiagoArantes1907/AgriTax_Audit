@@ -87,3 +87,37 @@ def soma_detalhe(grupo: dict | None, campo: str) -> float:
 def brl(v: float) -> str:
     """1234.5 → '1.234,50' (formato do v5 para observações)."""
     return f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def dedupe_perdcomp(grupos: dict) -> dict:
+    """Remove downloads duplicados do mesmo PER/DCOMP (ex.: 'x.pdf' e 'x_(1).pdf').
+
+    Para cada numero_perdcomp, mantém apenas os fatos do primeiro arquivo (nome
+    ordenado). Sem isso, cada cópia baixada do e-CAC dobraria crédito pedido
+    (CR-06) e débito compensado (CR-05)."""
+    escolhido: dict = {}
+    retificados: set = set()
+    for g in grupos.values():
+        for f in g["fatos"]:
+            num = str(f["detalhes"].get("numero_perdcomp", "")).strip()
+            alvo = str(f["detalhes"].get("numero_perdcomp_retificado", "")).strip()
+            if alvo:
+                retificados.add(alvo)   # documento substituído por retificador
+            if not num:
+                continue
+            arq = f["arquivo_origem"]
+            if num not in escolhido or arq < escolhido[num]:
+                escolhido[num] = arq
+    saida = {}
+    for chave, g in grupos.items():
+        fatos = []
+        for f in g["fatos"]:
+            num = str(f["detalhes"].get("numero_perdcomp", "")).strip()
+            if num and num in retificados:
+                continue
+            if num and f["arquivo_origem"] != escolhido.get(num):
+                continue
+            fatos.append(f)
+        if fatos:
+            saida[chave] = {"valor": sum(f["valor"] for f in fatos), "fatos": fatos}
+    return saida

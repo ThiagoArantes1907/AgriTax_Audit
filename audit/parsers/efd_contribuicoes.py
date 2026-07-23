@@ -241,6 +241,34 @@ def extract_efd_contribuicoes(path: str) -> list:
         if not f: continue
         reg = f[0]
 
+        if reg in ("M100", "M500"):
+            # Layout real (validado no BX): |M100|COD_CRED|IND_CRED_ORI|VL_BC_CRED|
+            # ALIQ|QUANT_BC|ALIQ_QUANT|VL_CRED|VL_AJUS_ACRES|VL_AJUS_REDUC|
+            # VL_CRED_DIF|VL_CRED_DISP|IND_DESC_CRED|VL_CRED_DESC|SLD_CRED|
+            cod_cred = (f[1] if len(f) > 1 else "").strip()
+            vl_cred = _efd_brl(f[7]) if len(f) > 7 else 0.0
+            if cod_cred and vl_cred > 0:
+                debitos.append({
+                    **cabecalho,
+                    "tipo_linha":     "credito",
+                    "tributo":        "PIS" if reg == "M100" else "COFINS",
+                    "codigo_receita": f"CRED-{cod_cred}",
+                    "descricao_codigo": f"Crédito Bloco M cód. {cod_cred}",
+                    "regime": "Não-Cumulativo",
+                    "base_calculo":   _efd_brl(f[3]) if len(f) > 3 else 0.0,
+                    "aliquota":       _efd_brl(f[4]) if len(f) > 4 else 0.0,
+                    "debito_apurado": 0.0, "ajuste_acrescimo": 0.0,
+                    "ajuste_reducao": 0.0, "contrib_periodo": 0.0,
+                    "ded_credito": 0.0, "ded_outras": 0.0,
+                    "contrib_a_recolher": 0.0,
+                    "vl_cred":        vl_cred,
+                    "vl_cred_disp":   _efd_brl(f[11]) if len(f) > 11 else 0.0,
+                    "vl_cred_desc":   _efd_brl(f[13]) if len(f) > 13 else 0.0,
+                    "sld_cred":       _efd_brl(f[14]) if len(f) > 14 else 0.0,
+                })
+            i += 1
+            continue
+
         if reg == "M205":
             # Layout oficial (validado em arquivo real do BX):
             # |M205|NUM_CAMPO|COD_REC|VL_DEBITO| — o v5 lia código/valor invertidos
@@ -330,7 +358,8 @@ def extract_efd_contribuicoes(path: str) -> list:
     # Sem detalhamento M205/M605 (Bloco M zerado — ex.: vendas 100% suspensas):
     # emite uma linha-resumo zerada por tributo para preservar no banco a
     # competência coberta e o flag de retificadora (insumos do CB-02 e CR-08).
-    if not debitos and cabecalho["cnpj"]:
+    tem_debito = any(not d.get("tipo_linha") for d in debitos)
+    if not tem_debito and cabecalho["cnpj"]:
         for tributo in ("PIS", "COFINS"):
             debitos.append({
                 **cabecalho,

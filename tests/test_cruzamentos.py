@@ -229,3 +229,70 @@ def test_cr08_versao_unica_fica_fora(tmp_path):
     linhas, achados = cr08.run(con)
     assert linhas == [] and achados == []
     con.close()
+
+
+# ── CR-06 ─────────────────────────────────────────────────────────────────────
+
+def _credito(valor, comp, trib="COFINS", arquivo="efd.txt"):
+    return FatoFiscal(cnpj=CNPJ, competencia=comp, tributo=trib,
+                      fonte=Fonte.EFD_CONTRIBUICOES, natureza=Natureza.CREDITO,
+                      valor=valor, codigo_receita="CRED-101",
+                      arquivo_origem=arquivo, detalhes={"sld_cred": valor})
+
+
+def _pedido(valor, comp, tipo="Cofins Não-Cumulativa - Ressarc/Compens", num="P1"):
+    return FatoFiscal(cnpj=CNPJ, competencia=comp, tributo=tipo,
+                      fonte=Fonte.PERDCOMP, natureza=Natureza.PLEITEADO,
+                      valor=valor, codigo_receita="101", arquivo_origem="per.pdf",
+                      detalhes={"numero_perdcomp": num})
+
+
+def test_cr06_pedido_com_e_sem_lastro(tmp_path):
+    from audit.cruzamentos import cr06
+    con = db.conectar(tmp_path)
+    db.inserir_fatos(con, [
+        # 1T/2022: lastro 30k (3 meses × 10k) × pedido 25k → com lastro
+        _credito(10000.0, "2022.01"), _credito(10000.0, "2022.02"),
+        _credito(10000.0, "2022.03"),
+        _pedido(25000.0, "2022.1T", num="PA"),
+        # 2T/2022: lastro 5k × pedido 20k → SEM lastro (excesso 15k)
+        _credito(5000.0, "2022.04"),
+        _pedido(20000.0, "2022.2T", num="PB"),
+    ])
+    linhas, achados = cr06.run(con)
+    por_sit = {l["situacao"]: l for l in linhas}
+    assert por_sit[cr06.SIT_COM_LASTRO]["lastro_escriturado"] == 30000.0
+    sem = por_sit[cr06.SIT_SEM_LASTRO]
+    assert sem["excesso"] == 15000.0
+    a = next(a for a in achados if a.risco == "R6")
+    assert a.prioridade == "ALTA" and "PB" in a.descricao
+    con.close()
+
+
+def test_cr06_credito_sem_pedido_gera_r7_com_decadencia(tmp_path):
+    from audit.cruzamentos import cr06
+    con = db.conectar(tmp_path)
+    db.inserir_fatos(con, [_credito(8000.0, "2023.05", trib="PIS")])
+    linhas, achados = cr06.run(con)
+    assert linhas[0]["situacao"] == cr06.SIT_SEM_PEDIDO
+    assert linhas[0]["competencia"] == "2023.2T"
+    a = achados[0]
+    assert (a.risco, a.decadencia) == ("R7", "2028-06")
+    assert a.diferenca == -8000.0
+    con.close()
+
+
+def test_cr06_pedido_retificado_fica_fora(tmp_path):
+    from audit.cruzamentos import cr06
+    con = db.conectar(tmp_path)
+    db.inserir_fatos(con, [
+        _credito(10000.0, "2022.01"),
+        _pedido(50000.0, "2022.1T", num="PRETIF"),
+    ])
+    linhas, achados = cr06.run(con)
+    assert any(l["situacao"] == cr06.SIT_SEM_LASTRO for l in linhas)
+    # retificado na planilha de status: pedido some, sobra crédito sem pedido
+    linhas, achados = cr06.run(con, status_map={"PRETIF": {"situacao": "Retificado"}})
+    assert all(l["situacao"] != cr06.SIT_SEM_LASTRO for l in linhas)
+    assert any(l["situacao"] == cr06.SIT_SEM_PEDIDO for l in linhas)
+    con.close()

@@ -21,7 +21,7 @@ import sqlite3
 
 from audit.core.modelo import Achado
 
-from .motor import TOL, brl, carregar_lado, soma_detalhe
+from .motor import TOL, brl, carregar_lado, dedupe_perdcomp, soma_detalhe
 
 SIT_QUITADO = "Quitado"
 SIT_SALDO = "Saldo a Pagar"
@@ -44,7 +44,8 @@ def run(con: sqlite3.Connection, status_map: dict | None = None
     pgdas = carregar_lado(con, "PGDAS_D", "DECLARADO")
     darf = carregar_lado(con, "DARF", "PAGO")
     das = carregar_lado(con, "DAS", "PAGO")
-    dcomp = _dcomps_ativas(carregar_lado(con, "PERDCOMP", "COMPENSADO"), status_map)
+    dcomp = _dcomps_ativas(dedupe_perdcomp(
+        carregar_lado(con, "PERDCOMP", "COMPENSADO")), status_map)
 
     linhas, achados = [], []
     todas = set(dctf) | set(dctfweb) | set(pgdas) | set(darf) | set(das) | set(dcomp)

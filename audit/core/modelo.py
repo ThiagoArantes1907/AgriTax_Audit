@@ -42,6 +42,7 @@ class Natureza(str, Enum):
     PAGO = "PAGO"
     COMPENSADO = "COMPENSADO"    # débito quitado via DCOMP
     PLEITEADO = "PLEITEADO"      # crédito pedido em PER/DCOMP (lado do CR-06)
+    CREDITO = "CREDITO"          # saldo credor escriturado (M100/M500 — lastro do CR-06)
 
 
 @dataclass
