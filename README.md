@@ -24,8 +24,9 @@ audit/core          modelo canônico (FatoFiscal/Achado), domínio (CR/RP/SN/PE,
                     custódia (hash/manifesto — CB-03), ficha Anexo A, SQLite por engajamento
 audit/coleta        CB — robôs e-CAC (Selenium) e ReceitaNetBX          [M4]
 audit/parsers       fontes → fatos: PER/DCOMP, DARF/DAS, DCTF (OCR),
-                    DCTFWeb, PGDAS-D, EFD-Contribuições, ECD (absorvidos
-                    do AgriTax Audit v5) + central de estruturação        [OK]
+                    DCTFWeb, PGDAS-D, EFD-Contribuições, ECD (do v5,
+                    com layouts corrigidos) + ECF (novo, IRPJ/CSLL por
+                    período) + central de estruturação                    [OK]
 audit/cruzamentos   CR-04 (EFD × DCTF/DCTFWeb) e CR-05 (confissão ×
                     quitação, 6 vias) gerando Achados R1/R2/R3/R7      [OK]
 audit/reperformance sn/ Simples: SN-01 RBT12, SN-02 sublimite, SN-04

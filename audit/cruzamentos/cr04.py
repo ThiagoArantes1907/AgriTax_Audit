@@ -25,9 +25,17 @@ BASE_LEGAL = "IN RFB 2.005/2021; Guia Prático EFD-Contribuições"
 
 
 def run(con: sqlite3.Connection) -> tuple[list[dict], list[Achado]]:
-    """Retorna (linhas do confronto — todas, inclusive conformes; achados)."""
+    """Retorna (linhas do confronto — todas, inclusive conformes; achados).
+
+    Lado escriturado = EFD-Contribuições (PIS/COFINS, Bloco M) + ECF
+    (IRPJ/CSLL apurados) — "Escriturações × DCTF/DCTFWeb" do PT-AF-003.
+    As chaves não colidem (códigos de receita distintos por tributo).
+    """
     efd = carregar_lado(con, "EFD_CONTRIBUICOES", "ESCRITURADO",
                         apenas_arquivo_ativo=True)
+    for chave, grupo in carregar_lado(con, "ECF", "ESCRITURADO",
+                                      apenas_arquivo_ativo=True).items():
+        efd.setdefault(chave, grupo)
     dctf = carregar_lado(con, "DCTF", "DECLARADO")
     dctfweb = carregar_lado(con, "DCTFWEB", "DECLARADO")
 

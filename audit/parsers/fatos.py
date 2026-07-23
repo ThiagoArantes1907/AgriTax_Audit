@@ -288,3 +288,32 @@ def fatos_perdcomp(rows: list[dict], arquivo: str = "") -> list[FatoFiscal]:
                 "numero_pedido_vinculado": r.get("numero_pedido_vinculado", ""),
             }))
     return fatos
+
+
+def fatos_ecf(rows: list[dict], arquivo: str = "") -> list[FatoFiscal]:
+    """ECF: IRPJ/CSLL apurados por período → ESCRITURADO com o código DARF
+    padrão do tipo de apuração (lado escriturado do CR-04/05 p/ Real e
+    Presumido). Zeros entram: registram cobertura e regime da competência."""
+    fatos = []
+    for r in rows:
+        cnpj = _cnpj(r)
+        if not cnpj:
+            continue
+        fatos.append(FatoFiscal(
+            cnpj=cnpj,
+            competencia=r.get("competencia_teste", ""),
+            tributo=str(r.get("tributo", "")).strip(),
+            fonte=Fonte.ECF,
+            natureza=Natureza.ESCRITURADO,
+            valor=_num(r.get("valor_apurado")),
+            codigo_receita=str(r.get("codigo_receita", "")),
+            arquivo_origem=arquivo or r.get("_source", ""),
+            detalhes={
+                "tipo_apuracao": r.get("tipo_apuracao", ""),
+                "forma_trib": r.get("forma_trib", ""),
+                "periodo_apuracao": r.get("periodo_apuracao", ""),
+                "base_calculo": _num(r.get("base_calculo")),
+                "retificadora": bool(r.get("retificadora")),
+                "num_rec_anterior": r.get("num_rec_anterior", ""),
+            }))
+    return fatos

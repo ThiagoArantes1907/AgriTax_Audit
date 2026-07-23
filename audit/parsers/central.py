@@ -15,6 +15,7 @@ from . import darf as p_darf
 from . import dctf as p_dctf
 from . import dctfweb as p_dctfweb
 from . import ecd as p_ecd
+from . import ecf as p_ecf
 from . import efd_contribuicoes as p_efd
 from . import fatos as adapt
 from . import perdcomp as p_perdcomp
@@ -43,6 +44,8 @@ def identificar_tipo(path: str | Path) -> str:
         f = primeiras[0].split("|")
         if len(f) > 2 and f[2] == "LECD":
             return "ecd"
+        if len(f) > 2 and f[2] == "LECF":
+            return "ecf"
         if len(f) > 4 and re.fullmatch(r"\d{8}", f[4] or ""):
             return "efd_icms"
         return "efd_contribuicoes"
@@ -89,6 +92,7 @@ _PIPELINES = {
     "dctfweb": (p_dctfweb.extract_dctfweb, adapt.fatos_dctfweb),
     "simples": (p_simples.extract_simples, adapt.fatos_simples),
     "efd_contribuicoes": (p_efd.extract_efd_contribuicoes, adapt.fatos_efd_contribuicoes),
+    "ecf": (p_ecf.extract_ecf, adapt.fatos_ecf),
     "perdcomp": (lambda p: p_perdcomp.flatten_rows(p_perdcomp.parse_pdf(p), Path(p).name),
                  adapt.fatos_perdcomp),
 }
@@ -99,6 +103,7 @@ _FONTES_POR_TIPO = {  # fontes a limpar na reimportação de um arquivo
     "dctfweb": ("DCTFWEB",),
     "simples": ("PGDAS_D", "DAS"),
     "efd_contribuicoes": ("EFD_CONTRIBUICOES",),
+    "ecf": ("ECF",),
     "perdcomp": ("PERDCOMP",),
 }
 
