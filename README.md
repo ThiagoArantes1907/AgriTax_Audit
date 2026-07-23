@@ -28,9 +28,11 @@ audit/parsers       fontes → fatos: PER/DCOMP, DARF/DAS, DCTF (OCR),
                     do AgriTax Audit v5) + central de estruturação        [OK]
 audit/cruzamentos   CR-04 (EFD × DCTF/DCTFWeb) e CR-05 (confissão ×
                     quitação, 6 vias) gerando Achados R1/R2/R3/R7      [OK]
-audit/reperformance rp/ (Real/Presumido) · sn/ (Simples Nacional)       [M5+]
+audit/reperformance sn/ Simples: SN-01 RBT12, SN-02 sublimite, SN-04
+                    fator r, SN-11 DAS decl.×pago · rp/ no M6           [SN OK]
 audit/pendencias    PE-01..05                                           [M3]
-audit/entregaveis   matriz de achados, relatório, mapa de créditos      [M7]
+audit/entregaveis   matriz decisória de achados (Excel, com campo de
+                    decisão do contador); relatório PDF no M7 final     [parcial]
 audit/integracao    adaptadores (sistema PIS/COFINS grãos)
 engajamentos/       dados por cliente/CNPJ (fora do git)
 ```

@@ -110,7 +110,14 @@
       "Bash(git commit -q -m 'E9b: relatorio de retificacao generalizado \\(ponte/notas/cortes opcionais e data-driven\\) *)",
       "Bash(python __TRACKED_VAR__/gera_relatorio_santafe.py)",
       "Bash(python \"C:/Users/thiag/AppData/Local/Temp/claude/D--AgriTax-Audit04/ae5e12e5-16bf-4b78-b0ac-cc78c9abc821/scratchpad/gera_relatorio_fortgrain.py\")",
-      "Bash(git commit -q -m 'M5: modulo Simples Nacional - SN-01/02/04/11 *)"
+      "Bash(git commit -q -m 'M5: modulo Simples Nacional - SN-01/02/04/11 *)",
+      "Skill(fewer-permission-prompts)",
+      "Skill(fewer-permission-prompts:*)",
+      "Bash(xargs -I{} wc -l {})",
+      "Bash(python __TRACKED_VAR__/gera_relatorio_fortgrain.py)",
+      "Bash(git commit -q -m 'E9c: demonstrativo sem '\\\\''R$ -0,00'\\\\'' quando nao ha desconto *)",
+      "Bash(export PYTHONPATH=\"C:/Projetos/PIS COFINS COM GRAOS\")",
+      "Bash(git commit -q -m 'M7 parcial: matriz decisoria de achados em Excel + allowlist de permissoes *)"
     ]
   }
 }

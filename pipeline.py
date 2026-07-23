@@ -34,7 +34,6 @@ BASE_ENGAJAMENTOS = Path(__file__).parent / "engajamentos"
 _FASES_PENDENTES = {
     "coletar": "M4 (robôs e-CAC integrados + automação BX)",
     "pendencias": "M3 (parser Situação Fiscal + DTE)",
-    "relatorio": "M7 (entregáveis com marca AgriTax)",
 }
 
 
@@ -122,6 +121,20 @@ def cmd_reperformar(args) -> None:
     print("RP (Real/Presumido): chega no M6.")
 
 
+def cmd_relatorio(args) -> None:
+    from audit.entregaveis.matriz import gerar_matriz
+    engaj = _engaj_dir(args)
+    params = config.carregar_parametros(engaj)
+    con = db.conectar(engaj)
+    try:
+        n = con.execute("SELECT COUNT(*) FROM achados").fetchone()[0]
+        destino = gerar_matriz(engaj, con, params)
+    finally:
+        con.close()
+    print(f"Matriz de achados gerada: {destino}  ({n} achado(s))")
+    print("Relatório PDF e demais entregáveis: complemento do M7.")
+
+
 def cmd_pendente(fase: str):
     def _run(args) -> None:
         _engaj_dir(args)  # valida que o engajamento existe
@@ -151,6 +164,8 @@ def main(argv: list[str] | None = None) -> None:
                      "CR-04/05: escriturado × declarado × pago/compensado")
     _com_engajamento("reperformar", cmd_reperformar,
                      "SN-01/02/04/11 (Simples); RP no M6")
+    _com_engajamento("relatorio", cmd_relatorio,
+                     "matriz decisória de achados (Excel)")
     for fase, marco in _FASES_PENDENTES.items():
         _com_engajamento(fase, cmd_pendente(fase), f"[pendente — {marco}]")
 

@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m pytest *)",
+      "Bash(python -m pyflakes *)",
+      "Bash(python pipeline.py *)",
+      "Bash(python -m pip list *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git fetch *)",
+      "Bash(git remote *)",
+      "Bash(git config --get *)",
+      "Bash(git -C *)",
+      "Bash(mkdir *)",
+      "Bash(cp *)",
+      "Bash(unzip -l *)",
+      "Bash(unzip -q *)",
+      "Bash(touch *)"
+    ]
+  }
+}
