@@ -101,26 +101,32 @@ def extract_efd_contribuicoes(path: str) -> list:
     lines = _efd_decode_file(path)
 
     # ── Cabeçalho (registro 0000) ──────────────────────────────────────────
+    # Layout oficial da EFD-Contribuições (validado em arquivo real do BX):
+    #   |0000|COD_VER|TIPO_ESCRIT|IND_SIT_ESP|NUM_REC_ANTERIOR|DT_INI|DT_FIN|NOME|CNPJ|UF|...
+    #     c0    c1        c2          c3            c4           c5     c6    c7   c8
+    # TIPO_ESCRIT: 0 = original, 1 = retificadora (NUM_REC_ANTERIOR preenchido).
+    # (O v5 lia DT_INI/CNPJ em posições erradas — corrigido aqui, ver M6.)
     cabecalho = {"_source": nome, "cnpj": "", "razao_social": "",
-                 "periodo": "", "competencia_teste": ""}
+                 "periodo": "", "competencia_teste": "",
+                 "retificadora": False, "num_rec_anterior": ""}
     for ln in lines:
         if ln.startswith("|0000|"):
-            f = ln.split("|")
-            # |0000|COD_VER|COD_FIN|DT_INI|DT_FIN|NOME|CNPJ|UF|...
-            #  0    1       2       3      4      5    6    7
-            if len(f) >= 8:
-                dt_ini = f[4]
+            c = ln.split("|")[1:-1] if ln.endswith("|") else ln.split("|")[1:]
+            if len(c) >= 9:
+                cabecalho["retificadora"] = c[2].strip() == "1"
+                cabecalho["num_rec_anterior"] = c[4].strip()
+                dt_ini = c[5]
                 cabecalho["periodo"] = _efd_periodo(dt_ini)
                 cabecalho["competencia_teste"] = format_competencia_teste(
                     cabecalho["periodo"])
-                cabecalho["razao_social"] = f[6][:200]
-                cnpj_raw = re.sub(r"\D", "", f[7])
+                cabecalho["razao_social"] = c[7][:200]
+                cnpj_raw = re.sub(r"\D", "", c[8])
                 if len(cnpj_raw) == 14:
                     cabecalho["cnpj"] = (
                         f"{cnpj_raw[0:2]}.{cnpj_raw[2:5]}.{cnpj_raw[5:8]}"
                         f"/{cnpj_raw[8:12]}-{cnpj_raw[12:14]}")
                 else:
-                    cabecalho["cnpj"] = f[7]
+                    cabecalho["cnpj"] = c[8]
             break
 
     # ── Indexa M205/M210 (PIS) e M605/M610 (COFINS) por código ─────────────
@@ -236,10 +242,11 @@ def extract_efd_contribuicoes(path: str) -> list:
         reg = f[0]
 
         if reg == "M205":
-            # |M205|NUM_CAMPO|VL_DEBITO|COD_REC|
+            # Layout oficial (validado em arquivo real do BX):
+            # |M205|NUM_CAMPO|COD_REC|VL_DEBITO| — o v5 lia código/valor invertidos
             num_campo = f[1] if len(f) > 1 else ""
-            vl_debito = _efd_brl(f[2]) if len(f) > 2 else 0.0
-            cod_rec   = (f[3] if len(f) > 3 else "").strip()
+            cod_rec   = (f[2] if len(f) > 2 else "").strip()
+            vl_debito = _efd_brl(f[3]) if len(f) > 3 else 0.0
             if not cod_rec or vl_debito <= 0:
                 continue
             # Junta com M210 (mesmo NUM_CAMPO) se houver
@@ -281,9 +288,10 @@ def extract_efd_contribuicoes(path: str) -> list:
             })
 
         elif reg == "M605":
+            # |M605|NUM_CAMPO|COD_REC|VL_DEBITO| (mesma correção do M205)
             num_campo = f[1] if len(f) > 1 else ""
-            vl_debito = _efd_brl(f[2]) if len(f) > 2 else 0.0
-            cod_rec   = (f[3] if len(f) > 3 else "").strip()
+            cod_rec   = (f[2] if len(f) > 2 else "").strip()
+            vl_debito = _efd_brl(f[3]) if len(f) > 3 else 0.0
             if not cod_rec or vl_debito <= 0:
                 continue
             m610 = m610_por_codigo.get(num_campo, {})
@@ -317,6 +325,21 @@ def extract_efd_contribuicoes(path: str) -> list:
                 "ded_credito":        round(ded_cred_alloc, 2),
                 "ded_outras":         round(ded_outras_alloc, 2),
                 "contrib_a_recolher": round(recolher, 2),
+            })
+
+    # Sem detalhamento M205/M605 (Bloco M zerado — ex.: vendas 100% suspensas):
+    # emite uma linha-resumo zerada por tributo para preservar no banco a
+    # competência coberta e o flag de retificadora (insumos do CB-02 e CR-08).
+    if not debitos and cabecalho["cnpj"]:
+        for tributo in ("PIS", "COFINS"):
+            debitos.append({
+                **cabecalho,
+                "tributo": tributo, "codigo_receita": "", "descricao_codigo": "",
+                "regime": "", "base_calculo": 0.0, "aliquota": 0.0,
+                "debito_apurado": 0.0, "ajuste_acrescimo": 0.0,
+                "ajuste_reducao": 0.0, "contrib_periodo": 0.0,
+                "ded_credito": 0.0, "ded_outras": 0.0, "contrib_a_recolher": 0.0,
+                "sem_movimento": True,
             })
 
     return debitos

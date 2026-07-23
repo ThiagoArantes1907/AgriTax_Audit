@@ -6,6 +6,7 @@ no SQLite. Reimportação é idempotente por (fonte, arquivo).
 """
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from audit.core import custodia, db
@@ -30,17 +31,21 @@ def identificar_tipo(path: str | Path) -> str:
 
     if ext == ".txt":
         try:
-            primeiras = p_efd._efd_decode_file(path)[:50]
+            primeiras = p_efd._efd_decode_file(path)[:5]
         except Exception:
             return "desconhecido"
         if not primeiras or not primeiras[0].startswith("|0000|"):
             return "desconhecido"
-        campos = primeiras[0].split("|")
-        if len(campos) > 2 and campos[2] == "LECD":
+        # Layouts do 0000 (validados em arquivos reais do ReceitaNetBX):
+        #   ECD:            |0000|LECD|DT_INI|...            → f[2] = "LECD"
+        #   EFD-ICMS/IPI:   |0000|019|COD_FIN|DT_INI|...     → f[4] é data (8 dígitos)
+        #   Contribuições:  |0000|006|TIPO|IND_SIT|NUM_REC|DT_INI|... → f[4] vazio/recibo
+        f = primeiras[0].split("|")
+        if len(f) > 2 and f[2] == "LECD":
             return "ecd"
-        if any(ln.startswith(("|M200|", "|M600|", "|0110|")) for ln in primeiras):
-            return "efd_contribuicoes"
-        return "efd_contribuicoes"  # SPED não-ECD: assume Contribuições (EFD-ICMS: M6)
+        if len(f) > 4 and re.fullmatch(r"\d{8}", f[4] or ""):
+            return "efd_icms"
+        return "efd_contribuicoes"
 
     if ext in (".xml", ".zip"):
         return "dctfweb"
@@ -105,6 +110,8 @@ def processar_arquivo(path: str | Path) -> tuple[str, list, list]:
     tipo = identificar_tipo(path)
     if tipo == "ecd":
         return tipo, p_ecd.extract_ecd(str(path)), []
+    if tipo == "efd_icms":
+        return tipo, [], []   # consistência interna (RP-04) e CR-03 chegam depois
     if tipo not in _PIPELINES:
         return tipo, [], []
     parser, adaptador = _PIPELINES[tipo]

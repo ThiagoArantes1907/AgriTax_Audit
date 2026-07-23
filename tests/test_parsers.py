@@ -128,14 +128,15 @@ def test_fatos_dctfweb():
 # ── EFD sintética + classificador + estruturar end-to-end ─────────────────────
 
 EFD_SINTETICA = "\n".join([
-    "|0000|006|0|01022026|28022026|EMPRESA TESTE LTDA|04461884000132|GO||5208707||00|1|",
+    # layout real do 0000 (BX): TIPO_ESCRIT + IND_SIT_ESP/NUM_REC vazios antes das datas
+    "|0000|006|0|||01022026|28022026|EMPRESA TESTE LTDA|04461884000132|GO|5208707||00|9|",
     "|0001|0|",
     "|M001|0|",
     "|M200|1000,00|0,00|0,00|0,00|0,00|0,00|1000,00|0,00|0,00|0,00|0,00|",
-    "|M205|02|1000,00|6912|",
+    "|M205|02|691201|1000,00|",
     "|M210|01|100000,00|100000,00|0,00|0,00|100000,00|1,6500|||1000,00|0,00|0,00|1000,00|",
     "|M600|4600,00|0,00|0,00|0,00|0,00|0,00|4600,00|0,00|0,00|0,00|0,00|",
-    "|M605|02|4600,00|5856|",
+    "|M605|02|585601|4600,00|",
     "|M610|01|100000,00|100000,00|0,00|0,00|100000,00|7,6000|||4600,00|0,00|0,00|4600,00|",
     "|M990|7|",
     "|9999|11|",
@@ -167,10 +168,10 @@ def test_extract_efd_sintetica(tmp_path):
     arq.write_text(EFD_SINTETICA, encoding="latin-1")
     rows = central.processar_arquivo(arq)[1]
     por_cod = {r["codigo_receita"]: r for r in rows}
-    assert set(por_cod) == {"6912", "5856"}
-    assert por_cod["6912"]["tributo"] == "PIS"
-    assert por_cod["6912"]["competencia_teste"] == "2026.02"
-    assert por_cod["5856"]["contrib_a_recolher"] == 4600.0
+    assert set(por_cod) == {"691201", "585601"}
+    assert por_cod["691201"]["tributo"] == "PIS"
+    assert por_cod["691201"]["competencia_teste"] == "2026.02"
+    assert por_cod["585601"]["contrib_a_recolher"] == 4600.0
 
 
 def test_estruturar_engajamento_end_to_end(tmp_path):

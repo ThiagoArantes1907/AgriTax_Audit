@@ -52,6 +52,8 @@ def _norm_codigo(codigo) -> str:
     m = _RE_COD_SUB.search(s)
     if m:
         return f"{m.group(1)}-{m.group(2)}"
+    if re.fullmatch(r"\d{6}", s):        # COD_REC da EFD: "691201" = 6912-01
+        return f"{s[:4]}-{s[4:]}"
     m = _RE_COD4.search(s)
     return m.group(1) if m else ""
 
@@ -210,8 +212,10 @@ def fatos_efd_contribuicoes(rows: list[dict], arquivo: str = "") -> list[FatoFis
     fatos = []
     for r in rows:
         cnpj = _cnpj(r)
-        if not cnpj or not r.get("codigo_receita"):
+        if not cnpj:
             continue
+        # linhas sem código = resumo zerado (competência sem débitos) — entram
+        # para registrar cobertura da série e o flag de retificadora (CR-08)
         fatos.append(FatoFiscal(
             cnpj=cnpj,
             competencia=r.get("competencia_teste", ""),
@@ -227,6 +231,9 @@ def fatos_efd_contribuicoes(rows: list[dict], arquivo: str = "") -> list[FatoFis
                 "contrib_periodo": _num(r.get("contrib_periodo")),
                 "ded_credito": _num(r.get("ded_credito")),
                 "ded_outras": _num(r.get("ded_outras")),
+                "retificadora": bool(r.get("retificadora")),
+                "num_rec_anterior": r.get("num_rec_anterior", ""),
+                "sem_movimento": bool(r.get("sem_movimento")),
             }))
     return fatos
 

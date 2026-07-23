@@ -97,7 +97,7 @@ def cmd_cruzar(args) -> None:
     engaj = _engaj_dir(args)
     resumo = cruzar_engajamento(engaj)
     total_achados = 0
-    for ref in ("CR-04", "CR-05"):
+    for ref in ("CR-04", "CR-05", "CR-08"):
         r = resumo.get(ref, {})
         sits = ", ".join(f"{k}: {v}" for k, v in r.get("por_situacao", {}).items())
         print(f"{ref}: {r.get('linhas', 0)} linha(s) → {r.get('achados', 0)} achado(s)"

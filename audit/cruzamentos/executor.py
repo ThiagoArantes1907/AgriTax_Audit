@@ -11,7 +11,7 @@ from pathlib import Path
 
 from audit.core import db
 
-from . import cr04, cr05
+from . import cr04, cr05, cr08
 
 
 def _status_map(engaj_dir: Path) -> dict:
@@ -35,6 +35,7 @@ def cruzar_engajamento(engaj_dir: str | Path) -> dict:
         execucoes = {
             "CR-04": lambda: cr04.run(con),
             "CR-05": lambda: cr05.run(con, status_map=status),
+            "CR-08": lambda: cr08.run(con),
         }
         saida = engaj_dir / "achados"
         saida.mkdir(exist_ok=True)

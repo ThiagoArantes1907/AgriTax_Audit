@@ -174,3 +174,58 @@ def test_cr05_simples_rateio_quitado(tmp_path):
     icms = next(l for l in linhas if l["codigo_receita"] == "SIMPLES-ICMS")
     assert icms["das_pago"] == 600.0   # rateio proporcional ao débito
     con.close()
+
+
+# ── CR-08 e arquivo ativo ─────────────────────────────────────────────────────
+
+def _fato_efd(valor, arquivo, retif=False, cod="6912", comp="2026.02"):
+    return FatoFiscal(cnpj=CNPJ, competencia=comp, tributo="PIS",
+                      fonte=Fonte.EFD_CONTRIBUICOES, natureza=Natureza.ESCRITURADO,
+                      valor=valor, codigo_receita=cod, arquivo_origem=arquivo,
+                      detalhes={"debito_apurado": valor, "retificadora": retif})
+
+
+def test_cr04_usa_so_arquivo_ativo(tmp_path):
+    from audit.cruzamentos import cr08
+    con = db.conectar(tmp_path)
+    db.inserir_fatos(con, [
+        _fato_efd(1000.0, "PISCOFINS_202602_Original.txt"),
+        _fato_efd(800.0, "PISCOFINS_202602_Retificadora.txt", retif=True),
+        _fato(Fonte.DCTF, Natureza.DECLARADO, 800.0, cod="6912-01"),
+    ])
+    linhas, achados = cr04.run(con)
+    # sem o arquivo ativo, EFD somaria 1800 e divergiria; com ele, confere
+    assert len(linhas) == 1
+    assert linhas[0]["efd_debito"] == 800.0
+    assert linhas[0]["situacao"] == cr04.SIT_OK
+    assert achados == []
+
+    # CR-08 vê a história: retificadora reduziu o débito em 200
+    linhas8, achados8 = cr08.run(con)
+    assert len(linhas8) == 1 and linhas8[0]["versoes"] == 2
+    assert linhas8[0]["diferencas_por_codigo"] == {"6912": -200.0}
+    a = achados8[0]
+    assert (a.ref, a.risco, a.prioridade) == ("CR-08", "R9", "ALTA")
+    con.close()
+
+
+def test_cr08_sem_diferenca_nao_gera_achado(tmp_path):
+    from audit.cruzamentos import cr08
+    con = db.conectar(tmp_path)
+    db.inserir_fatos(con, [
+        _fato_efd(1000.0, "a_original.txt"),
+        _fato_efd(1000.0, "b_retificadora.txt", retif=True),
+    ])
+    linhas, achados = cr08.run(con)
+    assert linhas[0]["situacao"] == "Sem diferenças"
+    assert achados == []
+    con.close()
+
+
+def test_cr08_versao_unica_fica_fora(tmp_path):
+    from audit.cruzamentos import cr08
+    con = db.conectar(tmp_path)
+    db.inserir_fatos(con, [_fato_efd(1000.0, "unico.txt")])
+    linhas, achados = cr08.run(con)
+    assert linhas == [] and achados == []
+    con.close()

@@ -26,7 +26,8 @@ BASE_LEGAL = "IN RFB 2.005/2021; Guia Prático EFD-Contribuições"
 
 def run(con: sqlite3.Connection) -> tuple[list[dict], list[Achado]]:
     """Retorna (linhas do confronto — todas, inclusive conformes; achados)."""
-    efd = carregar_lado(con, "EFD_CONTRIBUICOES", "ESCRITURADO")
+    efd = carregar_lado(con, "EFD_CONTRIBUICOES", "ESCRITURADO",
+                        apenas_arquivo_ativo=True)
     dctf = carregar_lado(con, "DCTF", "DECLARADO")
     dctfweb = carregar_lado(con, "DCTFWEB", "DECLARADO")
 
