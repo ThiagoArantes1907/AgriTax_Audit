@@ -33,7 +33,6 @@ BASE_ENGAJAMENTOS = Path(__file__).parent / "engajamentos"
 # fase → marco em que será implementada (docs/ARQUITETURA.md §6)
 _FASES_PENDENTES = {
     "coletar": "M4 (robôs e-CAC integrados + automação BX)",
-    "reperformar": "M5/M6 (módulos RP e SN)",
     "pendencias": "M3 (parser Situação Fiscal + DTE)",
     "relatorio": "M7 (entregáveis com marca AgriTax)",
 }
@@ -110,6 +109,19 @@ def cmd_cruzar(args) -> None:
     print(f"Matriz completa em: {engaj / 'achados'}  |  {total_achados} achado(s) no banco")
 
 
+def cmd_reperformar(args) -> None:
+    from audit.reperformance.executor import reperformar_engajamento
+    engaj = _engaj_dir(args)
+    resumo = reperformar_engajamento(engaj)
+    if "SN" in resumo:
+        print(f"SN: {resumo['SN']}")
+    else:
+        print(f"Apurações PGDAS-D: {resumo.get('apuracoes', 0)}")
+        for ref in ("SN-01", "SN-02", "SN-04", "SN-11"):
+            print(f"  {ref}: {resumo.get(ref, 0)} achado(s)")
+    print("RP (Real/Presumido): chega no M6.")
+
+
 def cmd_pendente(fase: str):
     def _run(args) -> None:
         _engaj_dir(args)  # valida que o engajamento existe
@@ -137,6 +149,8 @@ def main(argv: list[str] | None = None) -> None:
                        help="data-base das extrações e-CAC (AAAA-MM-DD)")
     _com_engajamento("cruzar", cmd_cruzar,
                      "CR-04/05: escriturado × declarado × pago/compensado")
+    _com_engajamento("reperformar", cmd_reperformar,
+                     "SN-01/02/04/11 (Simples); RP no M6")
     for fase, marco in _FASES_PENDENTES.items():
         _com_engajamento(fase, cmd_pendente(fase), f"[pendente — {marco}]")
 
