@@ -10,8 +10,13 @@ exclusivas e-CAC + ReceitaNetBX). Arquitetura em [docs/ARQUITETURA.md](docs/ARQU
 ```
 pip install -r requirements.txt
 
-python pipeline.py novo    --cliente ACME --cnpj 00.000.000/0001-00
-python pipeline.py status  --cliente ACME --cnpj 00000000000100
+python pipeline.py novo     --cliente ACME --cnpj 00.000.000/0001-00
+python pipeline.py coletar  --cliente ACME --cnpj ... --abrir-chrome   # login manual no e-CAC
+python pipeline.py estruturar --cliente ACME --cnpj ... --data-base 2026-07-23
+python pipeline.py cruzar --cliente ACME --cnpj ...
+python pipeline.py reperformar --cliente ACME --cnpj ...
+python pipeline.py relatorio --cliente ACME --cnpj ...
+python pipeline.py status  --cliente ACME --cnpj ...
 ```
 
 Fases do pipeline (seção 7 do programa): `coletar → estruturar → cruzar →
@@ -22,7 +27,9 @@ reperformar → pendencias → relatorio` — habilitadas marco a marco (§6 da 
 ```
 audit/core          modelo canônico (FatoFiscal/Achado), domínio (CR/RP/SN/PE, riscos),
                     custódia (hash/manifesto — CB-03), ficha Anexo A, SQLite por engajamento
-audit/coleta        CB — robôs e-CAC (Selenium) e ReceitaNetBX          [M4]
+audit/coleta        CB-04: robôs Selenium do e-CAC (PER/DCOMP, DCTF,
+                    DCTFWeb, DARF, Simples) via Chrome debug + login
+                    manual; cópia p/ raw/ecac · BX ainda manual        [OK]
 audit/parsers       fontes → fatos: PER/DCOMP, DARF/DAS, DCTF (OCR),
                     DCTFWeb, PGDAS-D, EFD-Contribuições, ECD (do v5,
                     com layouts corrigidos) + ECF (novo, IRPJ/CSLL por

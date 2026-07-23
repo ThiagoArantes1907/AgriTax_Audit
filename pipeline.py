@@ -32,7 +32,6 @@ BASE_ENGAJAMENTOS = Path(__file__).parent / "engajamentos"
 
 # fase → marco em que será implementada (docs/ARQUITETURA.md §6)
 _FASES_PENDENTES = {
-    "coletar": "M4 (robôs e-CAC integrados + automação BX)",
     "pendencias": "M3 (parser Situação Fiscal + DTE)",
 }
 
@@ -135,6 +134,21 @@ def cmd_relatorio(args) -> None:
     print("Relatório PDF e demais entregáveis: complemento do M7.")
 
 
+def cmd_coletar(args) -> None:
+    from audit.coleta.executor import coletar_engajamento
+    engaj = _engaj_dir(args)
+    modulos = [m for m in (args.modulos or "").split(",") if m] or None
+    resumo = coletar_engajamento(engaj, args.cnpj, modulos=modulos,
+                                 porta=args.porta, abrir_chrome=args.abrir_chrome)
+    if "erro" in resumo:
+        sys.exit(f"✗ {resumo['erro']}")
+    for mod, r in resumo.items():
+        if mod == "copiados":
+            continue
+        print(f"{mod}: {'OK' if r.get('ok') else 'com problemas'} — "
+              + ", ".join(f"{k}={v}" for k, v in r.items() if k != "ok"))
+
+
 def cmd_pendente(fase: str):
     def _run(args) -> None:
         _engaj_dir(args)  # valida que o engajamento existe
@@ -166,6 +180,13 @@ def main(argv: list[str] | None = None) -> None:
                      "SN-01/02/04/11 (Simples); RP no M6")
     _com_engajamento("relatorio", cmd_relatorio,
                      "matriz decisória de achados (Excel)")
+    p_col = _com_engajamento("coletar", cmd_coletar,
+                             "CB-04: robôs e-CAC (Chrome debug + login manual)")
+    p_col.add_argument("--modulos", default="",
+                       help="perdcomp,dctf,dctfweb,darf,simples (padrão: todos)")
+    p_col.add_argument("--porta", type=int, default=9222)
+    p_col.add_argument("--abrir-chrome", action="store_true",
+                       help="abre o Chrome em modo debug automaticamente")
     for fase, marco in _FASES_PENDENTES.items():
         _com_engajamento(fase, cmd_pendente(fase), f"[pendente — {marco}]")
 
