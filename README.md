@@ -27,8 +27,9 @@ audit/parsers       fontes → fatos: PER/DCOMP, DARF/DAS, DCTF (OCR),
                     DCTFWeb, PGDAS-D, EFD-Contribuições, ECD (do v5,
                     com layouts corrigidos) + ECF (novo, IRPJ/CSLL por
                     período) + central de estruturação                    [OK]
-audit/cruzamentos   CR-04 (EFD × DCTF/DCTFWeb) e CR-05 (confissão ×
-                    quitação, 6 vias) gerando Achados R1/R2/R3/R7      [OK]
+audit/cruzamentos   CR-01 (ECD×ECF), CR-04 (EFD+ECF × DCTF/DCTFWeb),
+                    CR-05 (confissão × quitação, 6 vias), CR-06
+                    (pedido × lastro) e CR-08 (retificadoras)          [OK]
 audit/reperformance sn/ Simples: SN-01 RBT12, SN-02 sublimite, SN-04
                     fator r, SN-11 DAS decl.×pago · rp/ no M6           [SN OK]
 audit/pendencias    PE-01..05                                           [M3]

@@ -296,3 +296,75 @@ def test_cr06_pedido_retificado_fica_fora(tmp_path):
     assert all(l["situacao"] != cr06.SIT_SEM_LASTRO for l in linhas)
     assert any(l["situacao"] == cr06.SIT_SEM_PEDIDO for l in linhas)
     con.close()
+
+
+# ── CR-01 ─────────────────────────────────────────────────────────────────────
+
+ECD_MIN = "\n".join([
+    "|0000|LECD|01012022|31122022|EMPRESA REAL LTDA|30995994000194|BA|150|2919553||0|",
+    "|J005|01012022|31032022|1||",
+    "|J150|1|RESUL|T|1||RESULTADO DO EXERCÍCIO|40403,2|C|70611,18|C|R||",
+    "|J005|01042022|31122022|1||",
+    "|J150|1|RESUL|T|1||RESULTADO DO EXERCÍCIO|70611,18|C|256871,02|C|R||",
+    "|J005|01012022|31122022|1||",
+    "|J150|1|RESUL|T|1||RESULTADO DO EXERCÍCIO|70821,54|C|327482,2|C|R||",
+    "|9999|8|",
+]) + "\n"
+
+ECF_MIN = "\n".join([
+    "|0000|LECF|0009|30995994000194|EMPRESA REAL LTDA|0|0|||01012022|31122022|N||0||",
+    "|0010||N|1|T|01|RRRR|||||||",
+    "|L030|01012022|31032022|T01|",
+    "|L300|3|RESULTADO LÍQUIDO DO PERÍODO|S|1|04||70611,18|C|",
+    "|L030|01042022|31122022|T02|",
+    "|L300|3|RESULTADO LÍQUIDO DO PERÍODO|S|1|04||256871,02|C|",
+    "|9999|7|",
+]) + "\n"
+
+
+def test_cr01_resultado_ecd_escolhe_lado_que_fecha(tmp_path):
+    from audit.cruzamentos.cr01 import resultado_ecd
+    arq = tmp_path / "ecd.txt"
+    arq.write_text(ECD_MIN, encoding="latin-1")
+    r = resultado_ecd(arq)
+    # lado 2 fecha (70611,18 + 256871,02 = 327482,20); lado 1 é o ano anterior
+    assert r == {"cnpj": "30995994000194", "exercicio": "2022",
+                 "resultado": 327482.20}
+
+
+def test_cr01_resultado_ecf_soma_trimestres(tmp_path):
+    from audit.cruzamentos.cr01 import resultado_ecf
+    arq = tmp_path / "ecf.txt"
+    arq.write_text(ECF_MIN, encoding="latin-1")
+    r = resultado_ecf(arq)
+    assert r["resultado"] == 327482.20
+    assert r["periodo"].startswith("Σ")
+
+
+def test_cr01_run_conforme_e_divergente(tmp_path):
+    from audit.cruzamentos import cr01
+    from audit.core import config
+    engaj = config.criar_engajamento(tmp_path, "T", "30.995.994/0001-94")
+    (engaj / "raw" / "bx" / "ecd_2022.txt").write_text(ECD_MIN, encoding="latin-1")
+    (engaj / "raw" / "bx" / "ecf_2022.txt").write_text(ECF_MIN, encoding="latin-1")
+    linhas, achados = cr01.run(engaj)
+    assert linhas[0]["situacao"] == "Conforme"
+    assert achados == []
+    # ECF divergente (resultado adulterado)
+    (engaj / "raw" / "bx" / "ecf_2022.txt").write_text(
+        ECF_MIN.replace("256871,02", "999999,99"), encoding="latin-1")
+    linhas, achados = cr01.run(engaj)
+    assert linhas[0]["situacao"] == "Divergente"
+    a = achados[0]
+    assert a.ref == "CR-01" and a.prioridade == "ALTA"
+    assert a.valores["escriturado"] == 327482.20
+
+
+def test_cr01_serie_incompleta(tmp_path):
+    from audit.cruzamentos import cr01
+    from audit.core import config
+    engaj = config.criar_engajamento(tmp_path, "T", "30.995.994/0001-94")
+    (engaj / "raw" / "bx" / "ecd_2022.txt").write_text(ECD_MIN, encoding="latin-1")
+    linhas, achados = cr01.run(engaj)
+    assert linhas[0]["situacao"] == "ECD sem ECF"
+    assert achados[0].risco == "R3"

@@ -11,7 +11,7 @@ from pathlib import Path
 
 from audit.core import db
 
-from . import cr04, cr05, cr06, cr08
+from . import cr01, cr04, cr05, cr06, cr08
 
 
 def _status_map(engaj_dir: Path) -> dict:
@@ -33,6 +33,7 @@ def cruzar_engajamento(engaj_dir: str | Path) -> dict:
     try:
         status = _status_map(engaj_dir)
         execucoes = {
+            "CR-01": lambda: cr01.run(engaj_dir),
             "CR-04": lambda: cr04.run(con),
             "CR-05": lambda: cr05.run(con, status_map=status),
             "CR-06": lambda: cr06.run(con, status_map=status),
