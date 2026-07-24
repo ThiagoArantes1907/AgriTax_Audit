@@ -143,3 +143,41 @@ def extract_ecf(path: str | Path) -> list[dict]:
             row["base_calculo" if papel == "base" else "valor_apurado"] = _brl(c[3])
 
     return [apuracoes[k] for k in sorted(apuracoes)]
+
+
+_REGS_DEMONSTRATIVO = ("P200", "P300", "P400", "P500",
+                       "N620", "N630", "N660", "N670")
+
+
+def extract_linhas_demonstrativo(path: str | Path,
+                                 registros=_REGS_DEMONSTRATIVO) -> list[dict]:
+    """Todas as linhas (código, descrição, valor) dos demonstrativos, com o
+    período corrente — insumo da reperformance RP-02."""
+    nome = Path(path).name
+    cnpj = forma_trib = ""
+    per_atual = ("", "", "")
+    saida = []
+    for ln in _decode(path):
+        if not ln.startswith("|"):
+            continue
+        c = ln.split("|")[1:-1] if ln.rstrip().endswith("|") else ln.split("|")[1:]
+        if not c:
+            continue
+        reg = c[0]
+        if reg == "0000" and len(c) >= 11:
+            cnpj = re.sub(r"\D", "", c[3])
+        elif reg == "0010" and len(c) >= 5:
+            forma_trib = FORMA_TRIB.get(c[3].strip(), c[3].strip())
+        elif reg.endswith("030") and len(reg) == 4 and len(c) >= 4:
+            per_atual = (c[3].strip(), c[1].strip(), c[2].strip())
+        elif reg in registros and len(c) >= 4:
+            per, dt_i, dt_f = per_atual
+            saida.append({
+                "_source": nome, "cnpj": cnpj, "forma_trib": forma_trib,
+                "registro": reg, "periodo_apuracao": per,
+                "competencia_teste": _competencia(per, dt_i, dt_f),
+                "dt_ini": dt_i, "dt_fin": dt_f,
+                "codigo": c[1].strip(), "descricao": c[2].strip(),
+                "valor": _brl(c[3]),
+            })
+    return saida

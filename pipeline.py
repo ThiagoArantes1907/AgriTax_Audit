@@ -111,13 +111,15 @@ def cmd_reperformar(args) -> None:
     from audit.reperformance.executor import reperformar_engajamento
     engaj = _engaj_dir(args)
     resumo = reperformar_engajamento(engaj)
+    if "RP-02" in resumo:
+        print(f"RP-02 (ECF): {resumo['RP-02_verificacoes']} verificação(ões) → "
+              f"{resumo['RP-02']} achado(s)")
     if "SN" in resumo:
         print(f"SN: {resumo['SN']}")
     else:
         print(f"Apurações PGDAS-D: {resumo.get('apuracoes', 0)}")
         for ref in ("SN-01", "SN-02", "SN-04", "SN-11"):
             print(f"  {ref}: {resumo.get(ref, 0)} achado(s)")
-    print("RP (Real/Presumido): chega no M6.")
 
 
 def cmd_relatorio(args) -> None:

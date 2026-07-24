@@ -12,6 +12,7 @@ from pathlib import Path
 
 from audit.core import config, db
 
+from .rp import checks as rp_checks
 from .sn import checks
 from .sn.base import SUBLIMITE_PADRAO
 
@@ -28,6 +29,19 @@ def reperformar_engajamento(engaj_dir: str | Path) -> dict:
     con = db.conectar(engaj_dir)
     resumo: dict = {}
     try:
+        saida = engaj_dir / "achados"
+        saida.mkdir(exist_ok=True)
+
+        # RP-02: reperformance da ECF (Real/Presumido) direto do raw/
+        linhas_rp, achados_rp = rp_checks.run_rp02(engaj_dir)
+        if linhas_rp:
+            db.limpar_achados(con, "RP-02")
+            db.inserir_achados(con, achados_rp)
+            (saida / "RP-02.json").write_text(
+                json.dumps(linhas_rp, ensure_ascii=False, indent=1), encoding="utf-8")
+            resumo["RP-02"] = len(achados_rp)
+            resumo["RP-02_verificacoes"] = len(linhas_rp)
+
         apuracoes, por_ref = checks.run_todos(con, sublimite=sublimite)
         if not apuracoes:
             resumo["SN"] = "sem apurações PGDAS-D no banco (regime não-Simples ou " \

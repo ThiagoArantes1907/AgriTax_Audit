@@ -37,8 +37,9 @@ audit/parsers       fontes → fatos: PER/DCOMP, DARF/DAS, DCTF (OCR),
 audit/cruzamentos   CR-01 (ECD×ECF), CR-04 (EFD+ECF × DCTF/DCTFWeb),
                     CR-05 (confissão × quitação, 6 vias), CR-06
                     (pedido × lastro) e CR-08 (retificadoras)          [OK]
-audit/reperformance sn/ Simples: SN-01 RBT12, SN-02 sublimite, SN-04
-                    fator r, SN-11 DAS decl.×pago · rp/ no M6           [SN OK]
+audit/reperformance sn/ Simples (SN-01/02/04/11) · rp/ RP-02: reexecução
+                    da ECF (presunção mínima, 15%+adicional, CSLL 9%,
+                    trava de 30%)                                       [OK]
 audit/pendencias    PE-01..05                                           [M3]
 audit/entregaveis   matriz decisória de achados (Excel, com campo de
                     decisão do contador); relatório PDF no M7 final     [parcial]
