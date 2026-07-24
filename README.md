@@ -41,8 +41,9 @@ audit/reperformance sn/ Simples (SN-01/02/04/11) · rp/ RP-02: reexecução
                     da ECF (presunção mínima, 15%+adicional, CSLL 9%,
                     trava de 30%)                                       [OK]
 audit/pendencias    PE-01..05                                           [M3]
-audit/entregaveis   matriz decisória de achados (Excel, com campo de
-                    decisão do contador); relatório PDF no M7 final     [parcial]
+audit/entregaveis   matriz decisória (Excel c/ decisão do contador),
+                    mapa de créditos c/ decadência, plano de
+                    regularização sequenciado e relatório PDF           [OK]
 audit/integracao    adaptadores (sistema PIS/COFINS grãos)
 engajamentos/       dados por cliente/CNPJ (fora do git)
 ```

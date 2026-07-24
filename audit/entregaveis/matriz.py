@@ -67,6 +67,14 @@ def gerar_matriz(engaj_dir: str | Path, con: sqlite3.Connection,
         _aba_matriz_json(wb.create_sheet("4. SN Apurações"),
                          _achata_sn(json.loads(sn.read_text(encoding="utf-8"))))
 
+    from .complementos import mapa_creditos, plano_regularizacao
+    mapa = mapa_creditos(con)
+    if mapa:
+        _aba_matriz_json(wb.create_sheet("5. Mapa de Créditos"), mapa)
+    plano = plano_regularizacao(con)
+    if plano:
+        _aba_matriz_json(wb.create_sheet("6. Plano de Regularização"), plano)
+
     destino = engaj_dir / "entregaveis" / "Matriz_Achados.xlsx"
     destino.parent.mkdir(exist_ok=True)
     wb.save(destino)

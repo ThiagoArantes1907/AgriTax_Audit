@@ -123,6 +123,7 @@ def cmd_reperformar(args) -> None:
 
 
 def cmd_relatorio(args) -> None:
+    from audit.entregaveis.complementos import gerar_relatorio_pdf
     from audit.entregaveis.matriz import gerar_matriz
     engaj = _engaj_dir(args)
     params = config.carregar_parametros(engaj)
@@ -130,10 +131,11 @@ def cmd_relatorio(args) -> None:
     try:
         n = con.execute("SELECT COUNT(*) FROM achados").fetchone()[0]
         destino = gerar_matriz(engaj, con, params)
+        pdf = gerar_relatorio_pdf(engaj, con, params)
     finally:
         con.close()
-    print(f"Matriz de achados gerada: {destino}  ({n} achado(s))")
-    print("Relatório PDF e demais entregáveis: complemento do M7.")
+    print(f"Matriz de achados : {destino}  ({n} achado(s))")
+    print(f"Relatório PDF     : {pdf}")
 
 
 def cmd_coletar(args) -> None:

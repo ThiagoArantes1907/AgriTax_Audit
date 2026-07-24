@@ -47,7 +47,10 @@ def test_gerar_matriz_completa(engaj):
     assert destino.exists()
 
     wb = openpyxl.load_workbook(destino)
-    assert wb.sheetnames == ["1. Resumo", "2. Achados", "3. CR-04", "4. SN Apurações"]
+    assert wb.sheetnames[:4] == ["1. Resumo", "2. Achados", "3. CR-04", "4. SN Apurações"]
+    # achado R7 no seed → mapa de créditos e plano de regularização presentes
+    assert "5. Mapa de Créditos" in wb.sheetnames
+    assert "6. Plano de Regularização" in wb.sheetnames
 
     resumo = wb["1. Resumo"]
     assert "MATRIZ DE ACHADOS" in resumo.cell(2, 2).value
