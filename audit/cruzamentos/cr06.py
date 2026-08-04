@@ -42,11 +42,13 @@ def run(con: sqlite3.Connection, status_map: dict | None = None
     creditos = carregar_lado(con, "EFD_CONTRIBUICOES", "CREDITO",
                              apenas_arquivo_ativo=True)
 
-    # lastro por (cnpj, tributo, competência mensal)
+    # lastro por (cnpj, tributo, competência mensal) — POR FATO: M100 (PIS) e
+    # M500 (COFINS) usam o MESMO código de crédito (ex.: 101), então um grupo
+    # por código mistura os dois tributos; o tributo vem de cada fato
     lastro_mensal: dict = defaultdict(float)
     for (cnpj, _cod, comp), g in creditos.items():
-        trib = g["fatos"][0]["tributo"]
-        lastro_mensal[(cnpj, trib, comp)] += g["valor"]
+        for f in g["fatos"]:
+            lastro_mensal[(cnpj, f["tributo"], comp)] += f["valor"]
 
     # cobertura da série: competências mensais com EFD no banco (qualquer natureza)
     cobertura = {(r["cnpj"], r["competencia"]) for r in con.execute(

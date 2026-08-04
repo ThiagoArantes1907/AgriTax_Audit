@@ -368,3 +368,23 @@ def test_cr01_serie_incompleta(tmp_path):
     linhas, achados = cr01.run(engaj)
     assert linhas[0]["situacao"] == "ECD sem ECF"
     assert achados[0].risco == "R3"
+
+
+def test_cr06_lastro_nao_mistura_pis_e_cofins(tmp_path):
+    """M100 (PIS) e M500 (COFINS) usam o mesmo código de crédito (101) —
+    o lastro deve separar por tributo, não pelo primeiro fato do grupo."""
+    from audit.cruzamentos import cr06
+    con = db.conectar(tmp_path)
+    db.inserir_fatos(con, [
+        _credito(100.0, "2022.01", trib="PIS"),
+        _credito(400.0, "2022.01", trib="COFINS"),   # mesmo CRED-101
+        _pedido(400.0, "2022.1T", tipo="Cofins Não-Cumulativa - Ressarc", num="PC"),
+        _pedido(100.0, "2022.1T", tipo="PIS/Pasep Não-Cumul - Ressarc", num="PP"),
+    ])
+    linhas, achados = cr06.run(con)
+    por_trib = {l["tributo"]: l for l in linhas}
+    assert por_trib["COFINS"]["lastro_escriturado"] == 400.0
+    assert por_trib["PIS"]["lastro_escriturado"] == 100.0
+    assert {l["situacao"] for l in linhas} == {cr06.SIT_COM_LASTRO}
+    assert achados == []
+    con.close()

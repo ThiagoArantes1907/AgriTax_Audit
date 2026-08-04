@@ -67,8 +67,18 @@ def identificar_tipo(path: str | Path) -> str:
             return "simples"
         if "COMPROVANTE DE ARRECADA" in texto or "DOCUMENTO DE ARRECADA" in texto:
             return "darf"
-        if "DCTF" in texto:
+        # capa real da DCTF imprime "D C T F" espaçado — checa sem espaços
+        if "DCTF" in texto.replace(" ", "") \
+                or "DECLARAÇÃO DE DÉBITOS E CRÉDITOS" in texto \
+                or "DECLARACAO DE DEBITOS E CREDITOS" in texto:
             return "dctf"
+        # fallback: pista no nome do arquivo (padrão dos downloads e-CAC)
+        nome = path.name.upper()
+        for pista, tipo in (("PERDCOMP", "perdcomp"), ("DCTFWEB", "dctfweb"),
+                            ("DCTF", "dctf"), ("DARF", "darf"),
+                            ("PGDAS", "simples"), ("DAS_", "simples")):
+            if pista in nome:
+                return tipo
         return "desconhecido"
 
     return "desconhecido"
