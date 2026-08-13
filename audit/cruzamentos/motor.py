@@ -19,6 +19,23 @@ TOL = 0.05
 
 _RE_BASE4 = re.compile(r"\d{4}")
 
+# códigos de apuração TRIMESTRAL (IRPJ/CSLL presumido e real trimestral):
+# a DCTF/MIT confessa por trimestre ("2024.1T" ou mês de abertura "2024.04")
+# e o DARF carrega o mês de encerramento do PA ("2024.03") — sem normalizar,
+# o mesmo trimestre vira três chaves distintas e o cruzamento não fecha.
+CODIGOS_TRIMESTRAIS = {"2089", "2372", "0220", "6012"}
+
+_RE_COMP_MENSAL = re.compile(r"^(\d{4})\.(0[1-9]|1[0-2])$")
+
+
+def competencia_conciliacao(cod_base: str, competencia: str) -> str:
+    """Competência canônica da chave: mês → trimestre p/ códigos trimestrais."""
+    if cod_base in CODIGOS_TRIMESTRAIS:
+        m = _RE_COMP_MENSAL.match(str(competencia or ""))
+        if m:
+            return f"{m.group(1)}.{(int(m.group(2)) + 2) // 3}T"
+    return competencia
+
 
 def codigo_base(codigo: str) -> str:
     """'6912-01' → '6912' | 'SIMPLES-COFINS' → 'SIMPLES-COFINS' | '' → ''."""
@@ -55,7 +72,9 @@ def carregar_lado(con: sqlite3.Connection, fonte: str, natureza: str,
 
     grupos: dict = defaultdict(lambda: {"valor": 0.0, "fatos": []})
     for row in linhas:
-        chave = (row["cnpj"], codigo_base(row["codigo_receita"]), row["competencia"])
+        base = codigo_base(row["codigo_receita"])
+        chave = (row["cnpj"], base,
+                 competencia_conciliacao(base, row["competencia"]))
         if not all(chave[i] for i in (0, 2)):
             continue
         grupos[chave]["valor"] += row["valor"]
