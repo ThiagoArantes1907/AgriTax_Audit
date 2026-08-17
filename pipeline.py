@@ -8,6 +8,7 @@ Fases (seção 7 do programa):
     cruzar       CR-01..08 — cruzamentos estruturais                      [M2]
     reperformar  RP-01..04 ou SN-01..14 conforme o regime                 [M5+]
     pendencias   PE-01..05 — situação fiscal, DTE, parcelamentos          [M3]
+    reforma      simulação de impacto CBS/IBS (EC 132/2023, LC 214/2025)  [M8]
     relatorio    entregáveis da seção 9                                   [M7]
     status       resumo do engajamento (custódia + banco + fases)
 
@@ -138,6 +139,27 @@ def cmd_relatorio(args) -> None:
     print(f"Relatório PDF     : {pdf}")
 
 
+def cmd_reforma(args) -> None:
+    from audit.reforma.executor import simular_engajamento
+    engaj = _engaj_dir(args)
+    params = config.carregar_parametros(engaj)
+    res = simular_engajamento(engaj, params, cnae=args.cnae,
+                              aliquota=args.aliquota, perfil=args.perfil,
+                              ano_base=args.ano_base)
+    if "erro" in res:
+        for fonte, ok, detalhe in res.get("completude", []):
+            print(f"  {'✓' if ok else '✗'} {fonte}: {detalhe}")
+        sys.exit(f"✗ {res['erro']}")
+    for linha in res["resumo"]:
+        print(linha)
+    print(f"Perfil aplicado   : {res['perfil']}")
+    print(f"Riscos            : {len(res['alertas'])} | "
+          f"Oportunidades: {len(res['oportunidades'])}")
+    for fonte, ok, detalhe in res["completude"]:
+        print(f"  {'✓' if ok else '✗'} {fonte}: {detalhe}")
+    print(f"Relatório PDF     : {res['pdf']}")
+
+
 def cmd_coletar(args) -> None:
     from audit.coleta.executor import coletar_engajamento
     engaj = _engaj_dir(args)
@@ -182,6 +204,17 @@ def main(argv: list[str] | None = None) -> None:
                      "CR-04/05: escriturado × declarado × pago/compensado")
     _com_engajamento("reperformar", cmd_reperformar,
                      "SN-01/02/04/11 (Simples); RP no M6")
+    p_ref = _com_engajamento("reforma", cmd_reforma,
+                             "simulação de impacto CBS/IBS (EC 132/2023)")
+    p_ref.add_argument("--cnae", default="",
+                       help="CNAE principal (define o regime diferenciado presumido)")
+    p_ref.add_argument("--aliquota", type=float, default=None,
+                       help="alíquota de referência total (padrão: 0.265)")
+    p_ref.add_argument("--perfil", default="",
+                       help="força um perfil: padrao, reg60_agro, reg60_saude, "
+                            "reg60_educacao, reg30_profissional, zero_cesta")
+    p_ref.add_argument("--ano-base", default="",
+                       help="exercício usado como base (padrão: último ano cheio)")
     _com_engajamento("relatorio", cmd_relatorio,
                      "matriz decisória de achados (Excel)")
     p_col = _com_engajamento("coletar", cmd_coletar,
