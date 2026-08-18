@@ -239,6 +239,7 @@ def gerar_pdf(engaj: Path, res: Resultado, cliente: str = "") -> Path:
     medidas = [("Receita bruta", b.receita), ("PIS/COFINS devidos", b.pis_cofins),
                ("ICMS a recolher", b.icms), ("ISS", b.iss),
                ("Base creditável (aquisições/despesas)", b.base_creditavel),
+               ("… dela, aquisições de pessoa física", b.compras_pf),
                ("Créditos já aproveitados hoje", b.creditos_atuais),
                ("Receita faturada contra PJ", b.receita_b2b)]
     dados = [["Medida", "Valor (R$)", "Fonte", "Confiança"]]

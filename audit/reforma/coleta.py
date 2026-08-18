@@ -50,6 +50,9 @@ class AnoDados:
     base_creditavel: Medida = field(default_factory=Medida)
     creditos_atuais: Medida = field(default_factory=Medida)
     receita_b2b: Medida = field(default_factory=Medida)
+    # aquisições de pessoa física (produtor rural, autônomo): no IBS/CBS não
+    # geram crédito cheio — no máximo crédito presumido a regulamentar
+    compras_pf: Medida = field(default_factory=Medida)
     creditavel_top: list[tuple[str, float]] = field(default_factory=list)
     meses: int = 0        # competências de EFD-Contribuições no ano
     meses_icms: int = 0   # competências de EFD-ICMS no ano
@@ -124,17 +127,22 @@ def _efd_contribuicoes(engaj: Path, dados: Dados) -> None:
     creditos: dict[str, float] = defaultdict(float)
     entradas: dict[str, float] = defaultdict(float)
     b2b: dict[str, float] = defaultdict(float)
+    compras_pf: dict[str, float] = defaultdict(float)
     meses: dict[str, int] = defaultdict(int)
     for comp, p in sorted(ativos.items()):
         ano = comp[:4]
         meses[ano] += 1
         ind_oper = None
+        pf: dict[str, bool] = {}     # COD_PART → é pessoa física?
         for ln in _linhas(p):
             f = _campos(ln)
             if not f:
                 continue
             reg = f[0]
-            if reg == "F550" and len(f) > 1:            # cumulativo consolidado
+            if reg == "0150" and len(f) > 5:
+                pf[f[1].strip()] = not (f[4] or "").strip() and bool(
+                    (f[5] or "").strip())
+            elif reg == "F550" and len(f) > 1:          # cumulativo consolidado
                 receita[ano] += _efd_brl(f[1])
             elif reg == "C100" and len(f) > 11:
                 ind_oper = f[1].strip()
@@ -142,6 +150,8 @@ def _efd_contribuicoes(engaj: Path, dados: Dados) -> None:
                     receita[ano] += _efd_brl(f[11])
                 else:
                     entradas[ano] += _efd_brl(f[11])
+                    if pf.get(f[3].strip()):
+                        compras_pf[ano] += _efd_brl(f[11])
             elif reg == "A100" and len(f) > 12:          # serviços (NFS-e)
                 if f[1].strip() == "1":
                     receita[ano] += _efd_brl(f[12])
@@ -172,6 +182,10 @@ def _efd_contribuicoes(engaj: Path, dados: Dados) -> None:
         if b2b[ano]:
             a.receita_b2b = Medida(round(b2b[ano], 2),
                                    "EFD F600 (base das retenções PJ)", CONFIRMADO)
+        if compras_pf[ano]:
+            a.compras_pf = Medida(round(compras_pf[ano], 2),
+                                  "EFD-Contribuições (entradas de pessoa física)",
+                                  CONFIRMADO)
     dados.completude.append(
         ("EFD-Contribuições", True,
          f"{len(ativos)} competência(s): {min(ativos)} a {max(ativos)}"))

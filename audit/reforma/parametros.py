@@ -155,6 +155,10 @@ class Premissas:
     aproveitamento_credito: float = 0.90
     # alíquota média dos fornecedores (padrão = referência cheia)
     aliquota_fornecedor: float | None = None
+    # fração da alíquota que se recupera nas aquisições de pessoa física não
+    # contribuinte (produtor rural). A LC 214/2025 prevê crédito presumido,
+    # mas o percentual depende de regulamentação — padrão conservador: zero.
+    credito_presumido_pf: float = 0.0
 
     @property
     def referencia(self) -> float:

@@ -51,6 +51,7 @@ def _anualizar(base: AnoDados) -> tuple[AnoDados, float]:
         icms_debitos=mensal(base.icms_debitos, fator_icms),
         creditos_atuais=mensal(base.creditos_atuais, fator),
         receita_b2b=mensal(base.receita_b2b, fator),
+        compras_pf=mensal(base.compras_pf, fator),
         base_creditavel=mensal(base.base_creditavel, fator))
     # exercício fechado da ECD vale mais que extrapolação de série incompleta
     if fator != 1.0 and base.receita_ecd:
@@ -157,8 +158,11 @@ def simular(dados: Dados, premissas: Premissas | None = None,
     for t in CALENDARIO:
         aliq_saida, aliq_entrada = _aliquotas(t, premissas)
         debito = base.receita.valor * aliq_saida
-        credito = (base.base_creditavel.valor * aliq_entrada
-                   * premissas.aproveitamento_credito)
+        # aquisições de PF não contribuinte não geram crédito cheio
+        cred_pj = max(base.base_creditavel.valor - base.compras_pf.valor, 0.0)
+        credito = (cred_pj * aliq_entrada * premissas.aproveitamento_credito
+                   + base.compras_pf.valor * aliq_entrada
+                   * premissas.credito_presumido_pf)
         legado_pc = base.pis_cofins.valor * t.frac_pis_cofins
         legado_ii = (base.icms.valor + base.iss.valor) * t.frac_icms_iss
         if t.compensavel:
@@ -251,6 +255,22 @@ def _analisar(res: Resultado) -> None:
                 f"para R$ {credito_pleno:,.2f} (hoje: "
                 f"R$ {b.creditos_atuais.valor:,.2f}) — "
                 f"R$ {ganho:,.2f}/ano de crédito novo.")
+
+    # 3b. compras de pessoa física — o ponto cego do agro
+    if b.compras_pf:
+        pct = b.compras_pf.valor / b.base_creditavel.valor if b.base_creditavel else 0
+        res.alertas.append(
+            f"R$ {b.compras_pf.valor:,.2f} das aquisições ({pct*100:.0f}% da "
+            f"base) vêm de PESSOA FÍSICA — produtor rural não contribuinte. No "
+            f"IBS/CBS essas compras NÃO geram crédito cheio: a LC 214/2025 "
+            f"prevê crédito presumido, mas o percentual depende de "
+            f"regulamentação. Esta projeção adota a hipótese conservadora "
+            f"(crédito zero sobre elas); cada 10 pontos de crédito presumido "
+            f"que vierem a ser concedidos valem "
+            f"R$ {b.compras_pf.valor * p.referencia * 0.10:,.2f}/ano para a "
+            f"empresa. É a variável que mais afeta o resultado — acompanhar a "
+            f"regulamentação e, desde já, mapear quais fornecedores podem "
+            f"optar por ser contribuintes.")
 
     # 4. redutor de regime diferenciado
     if p.perfil.redutor > 0:
