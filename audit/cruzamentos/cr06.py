@@ -9,10 +9,16 @@ Comparação por (CNPJ, tributo PIS/COFINS, período do crédito):
     LASTRO     = Σ saldos credores M100/M500 (SLD_CRED) das competências do
                  período, na versão ATIVA de cada EFD
 
-Nota metodológica: o lastro soma os saldos mensais do Bloco M — aproximação
-conservadora do crédito passível de pedido no período (saldos transportados
-entre meses via 1100/1500 não são reconstituídos aqui; o achado indica
-verificação, não glosa automática).
+Nota metodológica — FLUXO, não ESTOQUE. O lastro soma o SLD_CRED de cada mês,
+que é o resíduo do crédito apurado NAQUELE mês e não descontado nele. A soma
+mede quanto crédito o período gerou sem consumo imediato — e NÃO o estoque
+disponível hoje: parte desses resíduos é descontada em meses seguintes,
+ressarcida ou compensada.
+
+O estoque efetivamente disponível está no Bloco 1100 (PIS) / 1500 (COFINS) —
+controle de créditos de períodos anteriores, com saldo final por período de
+origem. Antes de dimensionar qualquer pedido, é esse bloco que vale. Por isso
+o achado orienta verificação, nunca pedido automático.
 """
 from __future__ import annotations
 
@@ -134,8 +140,11 @@ def run(con: sqlite3.Connection, status_map: dict | None = None
         achados.append(Achado(
             ref="CR-06", cnpj=cnpj, competencia=tri, tributo=trib,
             titulo=f"Crédito escriturado sem PER/DCOMP: {trib} {tri}",
-            descricao=(f"Saldo credor escriturado de R$ {brl(v)} no período sem "
-                       f"pedido de ressarcimento/compensação correspondente."),
+            descricao=(f"R$ {brl(v)} de crédito apurado no período e não "
+                       f"descontado no próprio mês, sem pedido de "
+                       f"ressarcimento/compensação. Valor de FLUXO: confirmar no "
+                       f"Bloco 1100/1500 quanto permanece em estoque antes de "
+                       f"dimensionar o pedido."),
             valores={"escriturado": v, "compensado": 0.0},
             diferenca=-v, risco="R7", base_legal="CTN, arts. 165–168 (prazo de 5 anos)",
             acao_proposta=("Avaliar PER/DCOMP do saldo antes da decadência "
