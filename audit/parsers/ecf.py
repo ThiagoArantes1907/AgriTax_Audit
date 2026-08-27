@@ -142,6 +142,16 @@ def extract_ecf(path: str | Path) -> list[dict]:
             })
             row["base_calculo" if papel == "base" else "valor_apurado"] = _brl(c[3])
 
+    # N620/26 e N660/18 são o balancete de suspensão/redução: a linha subtrai o
+    # "devido em meses anteriores" do acumulado, então valor NEGATIVO significa
+    # que o resultado acumulado caiu e NÃO há estimativa a pagar no mês — não é
+    # débito escriturado. Tratar como zero, guardando a marca para leitura.
+    for row in apuracoes.values():
+        if row["tipo_apuracao"] == "real_estimativa" and row["valor_apurado"] < 0:
+            row["estimativa_suspensa"] = True
+            row["valor_suspensao"] = row["valor_apurado"]
+            row["valor_apurado"] = 0.0
+
     return [apuracoes[k] for k in sorted(apuracoes)]
 
 
