@@ -6,8 +6,10 @@ da escrituração contábil (ECD). Divergência = base de IRPJ/CSLL suspeita
 (malha) ou escriturações de versões diferentes.
 
 Comparação por (CNPJ, exercício):
-    ECD: linha "RESULTADO DO EXERCÍCIO" do último demonstrativo J150
-         (último par valor/indicador D-C = acumulado do exercício)
+    ECD: linha-resultado raiz do J150 (IND_COD_AGL='T', NIVEL_AGL='1') do
+         demonstrativo ANUAL. Muitas ECDs publicam a DRE só por período
+         (12 blocos mensais ou 4 trimestrais) e não trazem bloco anual —
+         nesses casos o resultado do exercício é a SOMA dos períodos.
     ECF: linha código 3 "RESULTADO LÍQUIDO DO PERÍODO" do último período
          (A00 quando existe; senão o último trimestre) — L300 (Real) ou
          P150 (Presumido), mesmos layouts nos arquivos reais do BX.
@@ -114,7 +116,15 @@ def resultado_ecd(path: Path) -> dict | None:
     if not uteis:
         return None
     anual = next((b for b in uteis if b["ini"] == dt_ini and b["fim"] == dt_fin),
-                 uteis[-1])
+                 None)
+    if anual is None:
+        # ECD que publica a DRE só por período (mensal ou trimestral), sem
+        # demonstrativo anual. O resultado do exercício é a SOMA dos períodos —
+        # ler apenas o último bloco reporta o último mês como se fosse o ano.
+        # Sem bloco anual não há como conciliar lados, e o par do período
+        # corrente é sempre o último (o anterior vem antes, no leiaute).
+        return {"cnpj": cnpj, "exercicio": exercicio,
+                "resultado": sum(b["pares"][-1] for b in uteis)}
     parciais = [b for b in uteis if b is not anual]
     n_lados = max(len(b["pares"]) for b in uteis)
     melhor_lado, melhor_erro = None, None
