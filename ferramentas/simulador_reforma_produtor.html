@@ -449,7 +449,7 @@ td select.ovr{border-color:var(--brand);box-shadow:inset 0 0 0 1px var(--brand);
     <section data-view="param" class="hidden">
       <div class="grid g2">
         <div class="card">
-          <h2>Alíquotas de referência</h2><p class="sub">Projeção do Ministério da Fazenda. As alíquotas efetivas serão fixadas por resolução do Senado (arts. 353 a 369).</p>
+          <h2>Alíquotas de referência</h2><p class="sub">CBS: 11,3%, calculada pelo TCU em 28/10/2026 para 2027 (TC 006.529/2026-7). O Senado tem até 15/12/2026 para fixá-la por resolução; sem resolução, vale o cálculo do TCU. IBS: ainda sem número oficial (17,7% é a projeção da Fazenda; o Comitê Gestor usa 18,7%). Os dois campos são editáveis.</p>
           <div class="form" id="fAliq"></div>
         </div>
         <div class="card">
@@ -1014,9 +1014,11 @@ function aliq(ano,p){ // alíquotas cheias (antes de redução), em %
 }
 
 /* ===================== estado ===================== */
-const DEF={cbs:8.8,ibs:17.7,cpModo:'auto',cpCBS:0,cpIBS:0,credSimples:4,diferimento:true,maqZero:true,
+const DEF={aliqVer:1,cbs:11.3,ibs:17.7,cpModo:'auto',cpCBS:0,cpIBS:0,credSimples:4,diferimento:true,maqZero:true,
   combRed:0,cpEntradas:true,periodo:'auto',anualizar:true,limite:3600000};
 const st=lsGet();
+// alíquotas salvas antes do cálculo do TCU (28/10/2026) eram a projeção antiga: voltam ao padrão novo
+if(st.params&&st.params.aliqVer!==DEF.aliqVer){ delete st.params.cbs; delete st.params.ibs; }
 const S={docs:new Map(),cancel:new Set(),arquivos:{xml:0,zip:0,rar:0,evento:0,ignorados:[],erros:[]},
   sel:new Set(),params:Object.assign({},DEF,st.params||{}),ovNcm:{},ovCfop:{},
   itens:[],res:null,unid:'r',tab:'geral',pgDoc:0};
@@ -1611,7 +1613,7 @@ function campo(id,rot,val,opt={}){
 }
 function renderParam(){
   const p=S.params, B=S.res.base;
-  $('#fAliq').innerHTML=campo('cbs','CBS — alíquota de referência',p.cbs,{ajuda:'Federal. Em 2027–2028 é reduzida em 0,1 p.p. (art. 347).'})+
+  $('#fAliq').innerHTML=campo('cbs','CBS — alíquota de referência',p.cbs,{ajuda:'Federal. TCU 28/10/2026: 11,3%. Em 2027–2028 é reduzida em 0,1 p.p. (art. 347), ou seja, 11,2% efetivos.'})+
     campo('ibs','IBS — alíquota de referência (estadual + municipal)',p.ibs,{ajuda:'2027–2028: 0,05% + 0,05% (art. 344). 2029–2032: 10% a 40% da referência.'})+
     campo('combRed','Combustíveis — redução equivalente ao regime ad rem',p.combRed,{ajuda:'Regime específico (arts. 172 a 180). Ajuste quando as alíquotas por litro forem fixadas.'});
   $('#fCP').innerHTML=campo('cpModo','Origem do percentual',p.cpModo,{tipo:'sel',ops:[['auto','Estimar pela carga das compras do próprio produtor'],['manual','Informar manualmente']],
@@ -1701,7 +1703,7 @@ function renderMetodo(){
 <h3>6. Transição (EC 132/2023 e LC 214/2025)</h3>
 <p>2026: CBS 0,9% + IBS 0,1%, compensáveis (efeito nulo). 2027–2028: CBS plena menos 0,1 p.p. (art. 347), IBS 0,05% + 0,05% (art. 344), PIS/COFINS extintos e IPI zerado. 2029–2032: IBS a 10%, 20%, 30% e 40% da referência (art. 361 e seguintes), ICMS a 90%, 80%, 70% e 60%. 2033: regime pleno.</p>
 <h3>Limitações</h3>
-<ul><li>Alíquotas de referência e percentuais do crédito presumido ainda não fixados: são parâmetros.</li>
+<ul><li>CBS de referência: 11,3% (TCU, 28/10/2026, pendente de resolução do Senado até 15/12/2026). O mesmo valor é usado de 2029 a 2033, embora seja recalculado a cada ano. IBS de referência e percentuais do crédito presumido ainda não fixados: são parâmetros.</li>
 <li>O teste do limite usa só a receita presente nos XMLs. Receitas sem NF-e e participações em outras PJ agropecuárias (art. 164, § 6º) precisam ser somadas.</li>
 <li>Produtor integrado (art. 164, § 1º), cooperativas (§ 5º e art. 168, § 9º) e regimes específicos exigem análise própria.</li>
 <li>Tributos legados embutidos nas compras são estimados pelo destaque na nota, não pela carga cumulativa real da cadeia.</li>
