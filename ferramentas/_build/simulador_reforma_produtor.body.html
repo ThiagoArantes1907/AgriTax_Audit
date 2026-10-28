@@ -1,0 +1,1023 @@
+<body>
+<header class="top">
+  <div class="top-in">
+    <img class="logo logo-l" alt="AgriTax Tributário & Contábil" src="%%LOGO_L%%"><img class="logo logo-d" alt="AgriTax Tributário & Contábil" src="%%LOGO_D%%"><span class="sep"></span>
+    <h1>Simulador da Reforma Tributária<small>Produtor rural PF/PJ · IBS/CBS 2026–2033 a partir das NF-e (LC 214/2025)</small></h1>
+    <div class="spacer"></div>
+    <button class="btn hidden" id="btnCsv" title="Exportar a projeção em CSV (Excel)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>Projeção CSV</button>
+    <button class="btn hidden" id="btnPrint" title="Imprimir / salvar em PDF">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v7H6z"/></svg>Imprimir</button>
+    <button class="btn" id="btnAdd" title="Importar XMLs, ZIPs ou RARs de NF-e">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Importar XML</button>
+    <button class="btn icon-btn" id="btnTheme" title="Alternar tema claro/escuro">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+    <input type="file" id="file" accept=".xml,.XML,.zip,.ZIP,.rar,.RAR" multiple hidden>
+    <input type="file" id="folder" webkitdirectory multiple hidden>
+  </div>
+</header>
+
+<main>
+  <section id="welcome">
+    <img class="hero-logo logo-l" alt="AgriTax Tributário & Contábil" src="%%LOGO_L%%"><img class="hero-logo logo-d" alt="AgriTax Tributário & Contábil" src="%%LOGO_D%%">
+    <div class="drop" id="drop">
+      <svg class="drop-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M12 18v-6M9 15l3-3 3 3"/></svg>
+      <h2>Arraste os XMLs das notas do produtor aqui</h2>
+      <p>ou <button class="btn primary" id="btnPick" style="margin-left:4px">selecione arquivos</button> <button class="btn" id="btnPickDir">selecione uma pasta</button></p>
+      <p class="hint">Aceita XML de NF-e/NFP-e (procNFe), eventos de cancelamento e arquivos .zip ou .rar (inclusive um dentro do outro) — pode misturar vendas e compras, PF e PJ.<br>
+      Os arquivos são lidos somente no seu navegador; nada é enviado para a internet.</p>
+    </div>
+    <div id="prog" class="prog hidden"><div class="prog-bar"><i id="progBar"></i></div><span id="progTxt"></span></div>
+    <div class="feat">
+      <div><b>Leitura das notas</b>Vendas, compras, notas de entrada emitidas pelo comprador, devoluções e cancelamentos — por CFOP e NCM.</div>
+      <div><b>Dois cenários</b>Não contribuinte (art. 164) × opção pelo regime regular (art. 165), com crédito presumido do comprador (art. 168).</div>
+      <div><b>Transição completa</b>2026 (teste) a 2033: CBS, IBS por fração, ICMS 90→60%, PIS/COFINS extintos — tudo parametrizável.</div>
+    </div>
+    <div id="loadErr"></div>
+  </section>
+
+  <section id="app" class="hidden">
+    <div class="card id-card">
+      <div class="idbar">
+        <div class="who" id="who"></div>
+        <div class="period" id="period"></div>
+      </div>
+      <div class="prods" id="prods"></div>
+    </div>
+
+    <nav class="tabs" id="tabs">
+      <button class="tab on" data-tab="geral">Simulação 2026–2033</button>
+      <button class="tab" data-tab="vendas">Vendas</button>
+      <button class="tab" data-tab="compras">Compras e créditos</button>
+      <button class="tab" data-tab="class">Classificação (NCM/CFOP) <span class="badge w hidden" id="badgeDiv"></span></button>
+      <button class="tab" data-tab="param">Parâmetros</button>
+      <button class="tab" data-tab="docs">Documentos <span class="badge hidden" id="badgeDocs"></span></button>
+      <button class="tab" data-tab="metodo">Método e base legal</button>
+    </nav>
+
+    <section data-view="geral">
+      <div class="kpis" id="kpis"></div>
+      <div class="card mt verdict" id="leitura"></div>
+      <div class="grid g2 mt">
+        <div class="card">
+          <h2>Custo tributário líquido na cadeia, por ano</h2>
+          <p class="sub">Produtor + comprador contribuinte. A: custo do produtor − crédito presumido do comprador. B: custo do produtor + IBS/CBS pago por compradores não contribuintes.</p>
+          <div class="legend"><span><i style="background:var(--s7)"></i>Tributos legados (ICMS, PIS/COFINS, IPI)</span><span><i style="background:var(--s2)"></i>IBS/CBS — cenário A</span><span><i style="background:var(--s1)"></i>IBS/CBS — cenário B</span></div>
+          <div class="chart" id="chCadeia"></div>
+        </div>
+        <div class="card">
+          <h2>IBS/CBS no regime regular (cenário B)</h2>
+          <p class="sub">Débito sobre vendas × créditos sobre compras. A linha amarela mostra o crédito presumido que o comprador teria no cenário A.</p>
+          <div class="legend"><span><i style="background:var(--s6)"></i>Débito</span><span><i style="background:var(--s4)"></i>Créditos</span><span><i class="ln" style="background:var(--s3)"></i>Crédito presumido ao comprador (A)</span></div>
+          <div class="chart" id="chDebCred"></div>
+        </div>
+      </div>
+      <div class="card mt">
+        <div class="card-head"><div><h2>Projeção anual detalhada</h2><p class="sub" id="projSub"></p></div>
+          <div class="seg" id="segUnid"><button data-u="r" class="on">R$</button><button data-u="p">% da receita</button></div></div>
+        <div class="tbl-wrap"><table class="proj" id="tblProj"></table></div>
+        <p class="note">Valores a preços constantes da base analisada (efeito tributário isolado do crescimento). 2026 é o ano-teste: CBS 0,9% e IBS 0,1% destacados e compensáveis com PIS/COFINS, sem efeito de caixa para quem cumpre a obrigação acessória.</p>
+      </div>
+    </section>
+
+    <section data-view="vendas" class="hidden">
+      <div class="kpis" id="kpisV"></div>
+      <div class="grid g-2-1 mt">
+        <div class="card"><h2>Vendas por mês</h2><p class="sub">Valor líquido de tributos legados (base do IBS/CBS), por tipo de comprador</p>
+          <div class="legend"><span><i style="background:var(--s1)"></i>Comprador PJ (contribuinte)</span><span><i style="background:var(--s3)"></i>Comprador PF</span><span><i style="background:var(--s2)"></i>Exportação</span></div>
+          <div class="chart" id="chVMes"></div></div>
+        <div class="card"><h2>Tratamento no IBS/CBS</h2><p class="sub">Participação das vendas por classe de alíquota</p><div id="vClasses"></div></div>
+      </div>
+      <div class="grid g2 mt">
+        <div class="card"><h2>Principais produtos (NCM)</h2><p class="sub">Clique para ver a classificação</p><div id="vNcm"></div></div>
+        <div class="card"><h2>Principais compradores</h2><p class="sub">Tipo de comprador define quem aproveita crédito</p><div id="vCli"></div></div>
+      </div>
+    </section>
+
+    <section data-view="compras" class="hidden">
+      <div class="kpis" id="kpisC"></div>
+      <div class="grid g2 mt">
+        <div class="card"><h2>Compras por regime do fornecedor</h2><p class="sub">Define o crédito no regime regular</p><div id="cReg"></div></div>
+        <div class="card"><h2>Compras por classe de alíquota</h2><p class="sub">Insumos do Anexo IX têm redução de 60% e diferimento (art. 138)</p><div id="cClasses"></div></div>
+      </div>
+      <div class="grid g2 mt">
+        <div class="card"><h2>Principais itens comprados (NCM)</h2><p class="sub">Crédito de IBS/CBS estimado em 2033 (cenário B)</p><div id="cNcm"></div></div>
+        <div class="card"><h2>Principais fornecedores</h2><p class="sub">Valor das compras e regime</p><div id="cForn"></div></div>
+      </div>
+    </section>
+
+    <section data-view="class" class="hidden">
+      <div class="card">
+        <div class="card-head"><div><h2>Classificação por NCM</h2><p class="sub">Sugestão automática pelos anexos da LC 214/2025. Quando o XML de 2026 traz o grupo IBSCBS, a classificação do emitente aparece ao lado e as divergências ficam marcadas. A coluna <b>Sua decisão</b> prevalece sobre tudo.</p></div></div>
+        <div class="toolbar">
+          <input type="search" id="qNcm" placeholder="Filtrar por NCM ou descrição…">
+          <label class="chkl"><input type="checkbox" id="fDiv"> só divergentes</label>
+          <label class="chkl"><input type="checkbox" id="fOv"> só alterados</label>
+          <button class="btn" id="btnResetNcm">Limpar decisões</button>
+        </div>
+        <div class="tbl-wrap tall"><table id="tblNcm"></table></div>
+        <p class="note" id="ncmNote"></p>
+      </div>
+      <div class="card mt">
+        <div class="card-head"><div><h2>Natureza da operação por CFOP</h2><p class="sub">Define o que é receita, compra, devolução ou remessa sem efeito. Revise a categoria "Outras": ela fica fora do cálculo até você decidir.</p></div></div>
+        <div class="tbl-wrap tall"><table id="tblCfop"></table></div>
+      </div>
+    </section>
+
+    <section data-view="param" class="hidden">
+      <div class="grid g2">
+        <div class="card">
+          <h2>Alíquotas de referência</h2><p class="sub">Projeção do Ministério da Fazenda. As alíquotas efetivas serão fixadas por resolução do Senado (arts. 353 a 369).</p>
+          <div class="form" id="fAliq"></div>
+        </div>
+        <div class="card">
+          <h2>Crédito presumido do comprador (art. 168)</h2><p class="sub">Percentuais fixados por ato conjunto MF/CGIBS até setembro de cada ano (§ 4º), pela média dos cinco anos anteriores (§ 5º). Ainda não publicados.</p>
+          <div class="form" id="fCP"></div>
+        </div>
+        <div class="card">
+          <h2>Premissas das compras</h2><p class="sub">Como tratar fornecedores e insumos</p>
+          <div class="form" id="fCompras"></div>
+        </div>
+        <div class="card">
+          <h2>Base e limite</h2><p class="sub">Período usado como ano-base da projeção e limite do art. 164</p>
+          <div class="form" id="fBase"></div>
+        </div>
+      </div>
+      <div class="card mt">
+        <h2>Calendário da transição aplicado</h2><p class="sub">EC 132/2023 (ADCT, arts. 125 a 129) e LC 214/2025 (arts. 343 a 347 e 361 a 365)</p>
+        <div class="tbl-wrap"><table id="tblCal"></table></div>
+      </div>
+    </section>
+
+    <section data-view="docs" class="hidden">
+      <div class="card" id="alertas"></div>
+      <div class="card mt">
+        <div class="toolbar">
+          <input type="search" id="qDoc" placeholder="Filtrar por número, chave, nome, CPF/CNPJ, CFOP…">
+          <select id="fDir"><option value="">Todas as direções</option><option value="S">Vendas do produtor</option><option value="E">Compras do produtor</option><option value="X">Fora do cálculo</option></select>
+        </div>
+        <div class="tbl-wrap tall"><table id="tblDocs"></table></div>
+        <div class="pager" id="pgDocs"></div>
+      </div>
+    </section>
+
+    <section data-view="metodo" class="hidden">
+      <div class="card prose" id="metodo"></div>
+    </section>
+  </section>
+</main>
+<div id="tip"></div>
+<footer>Simulador da Reforma Tributária · AgriTax Tributário &amp; Contábil · simulação com alíquotas estimadas, sem caráter de parecer — a decisão de enquadramento é do contador responsável</footer>
+
+<script>%%UNRAR%%</script>
+<script>
+'use strict';
+/* ===================== utilidades ===================== */
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const nf2=new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const nf1=new Intl.NumberFormat('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1});
+const nf0=new Intl.NumberFormat('pt-BR',{maximumFractionDigits:0});
+const R=v=>(v<0?'−':'')+'R$ '+nf2.format(Math.abs(v||0));
+function RC(v){const a=Math.abs(v||0),s=v<-0.004?'−':'';
+  if(a>=1e9)return s+'R$ '+nf2.format(a/1e9)+' bi'; if(a>=1e6)return s+'R$ '+nf2.format(a/1e6)+' mi';
+  if(a>=1e3)return s+'R$ '+nf1.format(a/1e3)+' mil'; return s+'R$ '+nf2.format(a);}
+const PC=v=>nf2.format(v||0)+'%';
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtDoc=d=>!d?'—':d.length===11?d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4'):d.length===14?d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,'$1.$2.$3/$4-$5'):d;
+const fmtNcm=n=>n&&n.length===8?n.slice(0,4)+'.'+n.slice(4,6)+'.'+n.slice(6):n||'—';
+const MES=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+const ymLabel=ym=>MES[+ym.slice(5)-1]+'/'+ym.slice(2,4);
+const num=s=>{const v=parseFloat(s);return isFinite(v)?v:0};
+const sleep=()=>new Promise(r=>setTimeout(r,0));
+const LS_KEY='agritax-simrt-v1';
+function lsGet(k=LS_KEY){try{return JSON.parse(localStorage.getItem(k)||'{}')}catch(e){return {}}}
+function lsSet(o,k=LS_KEY){try{localStorage.setItem(k,JSON.stringify(o))}catch(e){}}
+
+/* ===================== base legal (LC 214/2025) ===================== */
+// Anexo I — Cesta Básica Nacional (art. 125): alíquota zero
+const ANEXO_I=['100620','100630','10064000','04011010','04011090','04012010','04012090','04014010','04015010',
+ '04021010','04021090','04022110','04022120','04022910','04022920','19011010','19011090','04051000','15171000',
+ '07133319','07133329','07133399','07133590','0901','21011','15132120','11062000','19030000','11022000','11031300',
+ '11041900','11042300','11010010','17011400','17019900','19021','19059090','19012010','19012090','11041200','11042200',
+ '11029000','0201','0202','02061000','02062','02102000','0203','02063000','02064','020910','02101','0204','02109920',
+ '02109990','02068000','02069000','0207','02099000','0210991','0302','0303','0304','04061010','04061090','04062000',
+ '04069010','04069020','04069030','25010020','25010090','0903'];
+const ANEXO_I_EXC=['02074300','02075300','03021','03023','03025100','03025200','03025300','03029','03031','03034',
+ '03036300','03036400','03036500','03039','03044','03045','03047','03048','03049'];
+// Anexo XV — hortícolas, frutas e ovos (art. 148): alíquota zero
+const ANEXO_XV=['04072','0701','07020000','0703','0704','0705','0706','07070000','0708','0709','0710','0803','0804',
+ '0805','0806','0807','0808','0809','0810','0811','06','0714','08011'];
+const ANEXO_XV_EXC=['07095','07108000'];
+// Anexo IX — insumos agropecuários e aquícolas (art. 138): redução de 60% + diferimento
+const ANEXO_IX=['31','38249977','38249979','38249989','25','300249','30029000','38210000','3824','38070000','1211','3808',
+ '3507904','0601','0602','300212','300215','300242','3004','01051','05111000','05119','04071','01069000','230990',
+ '10','11','12','2301','2302','2303','2304','230500','2306','230800','0210','0309','07129010','15','250100',
+ '25210000','293040','01022110','01022190','01023110','01023190','01031000','01041011','01042010'];
+const ANEXO_IX_EXC=['2515','2516','2517','2523','2524','2525','2526'];
+// Art. 137 — produtos agropecuários, aquícolas, pesqueiros, florestais e extrativistas in natura: redução de 60%
+const IN_NATURA=['01','0301','0302','0303','0306','0307','0308','0401','0409','0410','0713','0801','0802','0901',
+ '0904','0905','0906','0907','0908','0909','0910','10','12','1301','1401','1404','4001','4401','4403','5101','5201',
+ '5301','5302','5305'];
+// Art. 110 — tratores, máquinas e implementos agrícolas p/ produtor não contribuinte (lista do regulamento)
+const MAQ=['8432','8433','8434','8435','8436','8437','870110','87019'];
+// Regime específico de combustíveis (arts. 172 a 180) — monofásico, ad rem
+const COMB=['2710','2207','2711','3826'];
+const pre=(n,l)=>l.some(p=>n.startsWith(p));
+
+const CLASSES={
+  PADRAO:   {nome:'Alíquota padrão',curto:'Padrão',red:0,cor:'var(--s7)'},
+  RED60_NAT:{nome:'Redução de 60% — produto agropecuário in natura (art. 137)',curto:'−60% in natura',red:60,cor:'var(--s1)'},
+  RED60_INS:{nome:'Redução de 60% — insumo agropecuário, Anexo IX (art. 138)',curto:'−60% insumo (IX)',red:60,cor:'var(--s4)'},
+  ZERO_CESTA:{nome:'Alíquota zero — Cesta Básica, Anexo I (art. 125)',curto:'Zero cesta',red:100,cor:'var(--s3)'},
+  ZERO_HORTI:{nome:'Alíquota zero — hortícolas, frutas e ovos, Anexo XV (art. 148)',curto:'Zero hortifrúti',red:100,cor:'var(--s5)'},
+  MAQ:      {nome:'Máquina/implemento agrícola — zero p/ não contribuinte (art. 110)',curto:'Máquina (art. 110)',red:0,cor:'var(--s2)'},
+  COMB:     {nome:'Combustível — regime específico (estimativa)',curto:'Combustível',red:0,cor:'var(--s6)'},
+  SEM_CRED: {nome:'Uso pessoal / alheio à atividade — sem crédito',curto:'Sem crédito',red:0,cor:'var(--s8)'},
+  ISENTO:   {nome:'Fora do campo / imune (sem IBS/CBS)',curto:'Sem incidência',red:100,cor:'var(--axis)'},
+};
+function classeLC(ncm,dir){
+  const n=ncm||'';
+  if(pre(n,ANEXO_I)&&!pre(n,ANEXO_I_EXC)){ if(!(dir==='S'&&n.startsWith('0401'))) return 'ZERO_CESTA'; }
+  if(pre(n,ANEXO_XV)&&!pre(n,ANEXO_XV_EXC)) return 'ZERO_HORTI';
+  if(pre(n,COMB)) return 'COMB';
+  if(dir==='E'&&pre(n,ANEXO_IX)&&!pre(n,ANEXO_IX_EXC)) return 'RED60_INS';
+  if(dir==='E'&&pre(n,MAQ)) return 'MAQ';
+  if(pre(n,IN_NATURA)) return 'RED60_NAT';
+  if(pre(n,ANEXO_IX)&&!pre(n,ANEXO_IX_EXC)) return 'RED60_INS';
+  return 'PADRAO';
+}
+// leitura do grupo IBSCBS do XML 2026 (NT 2025.002): CST → classe equivalente
+function classeXML(h){
+  if(!h) return null;
+  const c=h.cst;
+  if(c==='000') return 'PADRAO';
+  if(c==='200'||c==='220'||c==='221') return h.red>=99.99?'ZERO_CESTA':h.red>=59.99?'RED60':h.red>0?'RED'+Math.round(h.red):'PADRAO';
+  if(c==='410') return 'ISENTO';
+  if(c==='510') return 'RED60_INS';
+  if(c==='620') return 'COMB';
+  return null;
+}
+const xmlEquiv=(xc,cls)=>xc===cls||(xc==='RED60'&&(cls==='RED60_NAT'||cls==='RED60_INS'))||(xc==='ZERO_CESTA'&&(cls==='ZERO_HORTI'||cls==='ISENTO'));
+
+/* CFOP → natureza */
+const CATS={
+  VENDA:{nome:'Venda / compra',conta:true},
+  DEVOL:{nome:'Devolução',conta:true},
+  EXPORT:{nome:'Exportação / importação',conta:true},
+  EXP_IND:{nome:'Fim específico de exportação',conta:true},
+  ATIVO:{nome:'Ativo imobilizado',conta:true},
+  TRANSF:{nome:'Transferência entre estabelecimentos',conta:false},
+  REMESSA:{nome:'Remessa / retorno sem efeito',conta:false},
+  OUTRAS:{nome:'Outras — revisar',conta:false},
+  IGNORAR:{nome:'Ignorar (duplicidade documental)',conta:false},
+};
+function catCFOP(c){
+  c=String(c||''); const f=c[0], d=+c.slice(1);
+  if(c==='5929'||c==='6929') return 'IGNORAR';
+  if(d===503||d===553||(d>=660&&d<=662)) return 'DEVOL';
+  if(d===556) return (f==='5'||f==='6')?'DEVOL':'VENDA';
+  if(f==='3'||f==='7') return 'EXPORT';
+  if(d>=101&&d<=126) return 'VENDA';
+  if(d>=151&&d<=159) return 'TRANSF';
+  if(d>=201&&d<=215) return 'DEVOL';
+  if(d>=251&&d<=360) return 'VENDA';
+  if(d>=401&&d<=409) return 'VENDA';
+  if(d>=410&&d<=413) return 'DEVOL';
+  if(d===414||d===415) return 'REMESSA';
+  if(d>=501&&d<=505) return 'EXP_IND';
+  if(d===551) return 'ATIVO';
+  if(d===552||d===557) return 'TRANSF';
+  if(d===554||d===555) return 'REMESSA';
+  if(d>=651&&d<=659) return 'VENDA';
+  if(d>=663&&d<=667) return 'REMESSA';
+  if(d===910||d===911||d===949) return 'OUTRAS';
+  if(d>=900) return 'REMESSA';
+  return 'OUTRAS';
+}
+
+/* calendário da transição */
+const ANOS=[2026,2027,2028,2029,2030,2031,2032,2033];
+const LEG={2026:{pc:1,icms:1,ipi:1},2027:{pc:0,icms:1,ipi:0},2028:{pc:0,icms:1,ipi:0},2029:{pc:0,icms:.9,ipi:0},
+  2030:{pc:0,icms:.8,ipi:0},2031:{pc:0,icms:.7,ipi:0},2032:{pc:0,icms:.6,ipi:0},2033:{pc:0,icms:0,ipi:0}};
+const FIBS={2029:.1,2030:.2,2031:.3,2032:.4};
+function aliq(ano,p){ // alíquotas cheias (antes de redução), em %
+  if(ano<=2026) return {cbs:0,ibs:0,teste:true};
+  if(ano<=2028) return {cbs:Math.max(0,p.cbs-0.1),ibs:0.1};
+  return {cbs:p.cbs,ibs:p.ibs*(FIBS[ano]??1)};
+}
+
+/* ===================== estado ===================== */
+const DEF={cbs:8.8,ibs:17.7,cpModo:'auto',cpCBS:0,cpIBS:0,credSimples:4,diferimento:true,maqZero:true,
+  combRed:0,cpEntradas:true,periodo:'auto',anualizar:true,limite:3600000};
+const st=lsGet();
+const S={docs:new Map(),cancel:new Set(),arquivos:{xml:0,zip:0,rar:0,evento:0,ignorados:[],erros:[]},
+  sel:new Set(),params:Object.assign({},DEF,st.params||{}),ovNcm:{},ovCfop:{},
+  itens:[],res:null,unid:'r',tab:'geral',pgDoc:0};
+// parâmetros e seleção: globais; decisões de classificação: por produtor (não vazam entre clientes)
+const chaveProd=()=>LS_KEY+':'+[...S.sel].sort().join('+');
+function salvar(){lsSet({params:S.params,sel:[...S.sel]}); lsSet({ovNcm:S.ovNcm,ovCfop:S.ovCfop},chaveProd());}
+function carregarDecisoes(){const o=lsGet(chaveProd()); S.ovNcm=o.ovNcm||{}; S.ovCfop=o.ovCfop||{};}
+
+/* ===================== leitura de arquivos ===================== */
+function decodeXML(bytes){
+  let s=new TextDecoder('utf-8').decode(bytes);
+  const m=/encoding=["']([^"']+)/i.exec(s.slice(0,200));
+  if(m&&/8859|latin|1252/i.test(m[1])) s=new TextDecoder('windows-1252').decode(bytes);
+  return s.replace(/^﻿/,'');
+}
+async function inflateRaw(u8){
+  const ds=new DecompressionStream('deflate-raw');
+  const out=new Response(new Blob([u8]).stream().pipeThrough(ds));
+  return new Uint8Array(await out.arrayBuffer());
+}
+async function unzip(buf){
+  const dv=new DataView(buf), u8=new Uint8Array(buf), out=[];
+  let i=buf.byteLength-22; while(i>=0&&dv.getUint32(i,true)!==0x06054b50) i--;
+  if(i<0) throw new Error('ZIP inválido');
+  const n=dv.getUint16(i+10,true); let p=dv.getUint32(i+16,true);
+  if(p===0xffffffff) throw new Error('ZIP64 não suportado — descompacte a pasta antes');
+  const td=new TextDecoder('utf-8');
+  for(let k=0;k<n;k++){
+    if(dv.getUint32(p,true)!==0x02014b50) break;
+    const met=dv.getUint16(p+10,true), cs=dv.getUint32(p+20,true), nl=dv.getUint16(p+28,true),
+      xl=dv.getUint16(p+30,true), cl=dv.getUint16(p+32,true), lho=dv.getUint32(p+42,true);
+    const name=td.decode(u8.subarray(p+46,p+46+nl)); p+=46+nl+xl+cl;
+    if(name.endsWith('/')) continue;
+    const st0=lho+30+dv.getUint16(lho+26,true)+dv.getUint16(lho+28,true);
+    out.push({name,met,data:u8.subarray(st0,st0+cs)});
+  }
+  return out;
+}
+let _wasm=null;
+function wasmUnrar(){ if(!_wasm){ const b=atob(UNRAR_WASM_B64); _wasm=new Uint8Array(b.length); for(let i=0;i<b.length;i++) _wasm[i]=b.charCodeAt(i); } return _wasm; }
+async function unrar(u8){
+  const ex=await UnrarLib.createExtractorFromData({wasmBinary:wasmUnrar(),data:u8.buffer.slice(u8.byteOffset,u8.byteOffset+u8.byteLength)});
+  const {files}=ex.extract(), out=[];
+  for(const f of files){ if(f.fileHeader.flags.directory) continue; out.push({name:f.fileHeader.name,data:f.extraction}); }
+  return out;
+}
+async function processarBytes(name,u8,fila){
+  const low=name.toLowerCase();
+  if(low.endsWith('.rar')){
+    S.arquivos.rar++;
+    try{
+      for(const e of await unrar(u8)){
+        const l=e.name.toLowerCase(); if(!/\.(xml|zip|rar)$/.test(l)) continue;
+        fila.push({name:name+' › '+e.name,u8:e.data});
+      }
+    }catch(err){S.arquivos.erros.push(name+': '+(err.reason||err.message||err))}
+    return;
+  }
+  if(low.endsWith('.zip')){
+    S.arquivos.zip++;
+    try{
+      for(const e of await unzip(u8.buffer.slice(u8.byteOffset,u8.byteOffset+u8.byteLength))){
+        const l=e.name.toLowerCase(); if(!/\.(xml|zip|rar)$/.test(l)) continue;
+        let d; try{ d=e.met===0?e.data:e.met===8?await inflateRaw(e.data):null; }catch(err){ d=null }
+        if(!d){S.arquivos.erros.push(e.name+': compressão não suportada');continue}
+        fila.push({name:name+' › '+e.name,u8:d});
+      }
+    }catch(err){S.arquivos.erros.push(name+': '+err.message)}
+    return;
+  }
+  if(!low.endsWith('.xml')){S.arquivos.ignorados.push(name+' (extensão)');return}
+  parseXML(decodeXML(u8),name);
+}
+
+/* ===================== parser NF-e ===================== */
+function kid(el,n){if(!el)return null;for(const c of el.children) if(c.localName===n) return c;return null}
+function tx(el,n){const k=kid(el,n);return k?k.textContent.trim():''}
+function deep(el,n){if(!el)return null;const l=el.getElementsByTagNameNS('*',n);return l.length?l[0]:null}
+function dtx(el,n){const k=deep(el,n);return k?k.textContent.trim():''}
+function parseXML(text,fname){
+  const doc=new DOMParser().parseFromString(text,'application/xml');
+  if(doc.getElementsByTagName('parsererror').length){S.arquivos.erros.push(fname+': XML malformado');return}
+  const infs=doc.getElementsByTagNameNS('*','infNFe');
+  if(!infs.length){
+    const evs=doc.getElementsByTagNameNS('*','infEvento');
+    if(evs.length){
+      S.arquivos.evento++;
+      let cancelOk=false, ch='';
+      for(const ev of evs){
+        const tp=tx(ev,'tpEvento'), cs=tx(ev,'cStat'), c=tx(ev,'chNFe');
+        if(tp==='110111'){ch=c||ch; if(!cs) cancelOk=cancelOk||false;}
+        if(cs&&['135','136','155'].includes(cs)&&(!tp||tp==='110111')) {cancelOk=true; ch=c||ch;}
+      }
+      // procEventoNFe: infEvento do pedido (tpEvento) + infEvento do retorno (cStat)
+      const tps=[...evs].map(e=>tx(e,'tpEvento')).filter(Boolean);
+      if(tps.includes('110111')&&(cancelOk||!doc.getElementsByTagNameNS('*','retEvento').length)&&ch) S.cancel.add(ch);
+      return;
+    }
+    S.arquivos.ignorados.push(fname+' ('+(doc.documentElement.localName||'?')+')'); return;
+  }
+  S.arquivos.xml++;
+  const prot={};
+  for(const ip of doc.getElementsByTagNameNS('*','infProt')) prot[tx(ip,'chNFe')]=tx(ip,'cStat');
+  for(const inf of infs){
+    const ch=(inf.getAttribute('Id')||'').replace(/^NFe/,'');
+    const ide=kid(inf,'ide'), em=kid(inf,'emit'), de=kid(inf,'dest');
+    const dt=(tx(ide,'dhEmi')||tx(ide,'dEmi')).slice(0,10);
+    const d={ch,mod:tx(ide,'mod'),serie:tx(ide,'serie'),nNF:tx(ide,'nNF'),dt,ym:dt.slice(0,7),tpNF:tx(ide,'tpNF'),
+      fin:tx(ide,'finNFe'),natOp:tx(ide,'natOp'),cStat:prot[ch]||'',file:fname,
+      emit:{doc:tx(em,'CNPJ')||tx(em,'CPF'),nome:tx(em,'xNome'),uf:tx(kid(em,'enderEmit'),'UF'),ie:tx(em,'IE'),crt:tx(em,'CRT')},
+      dest:de?{doc:tx(de,'CNPJ')||tx(de,'CPF'),ext:tx(de,'idEstrangeiro')!==''||!!kid(de,'idEstrangeiro'),nome:tx(de,'xNome'),
+        uf:tx(kid(de,'enderDest'),'UF'),ind:tx(de,'indIEDest'),ie:tx(de,'IE')}:{doc:'',nome:'',uf:'',ind:'',ie:'',ext:false},
+      itens:[],vNF:num(dtx(kid(inf,'total'),'vNF'))};
+    for(const det of inf.children){ if(det.localName!=='det') continue;
+      const pr=kid(det,'prod'), im=kid(det,'imposto');
+      const vProd=num(tx(pr,'vProd'));
+      const vOper=vProd-num(tx(pr,'vDesc'))+num(tx(pr,'vFrete'))+num(tx(pr,'vSeg'))+num(tx(pr,'vOutro'));
+      const gI=kid(im,'ICMS'), gIcms=gI&&gI.firstElementChild;
+      const gP=kid(im,'PIS'), gC=kid(im,'COFINS'), gIpi=kid(im,'IPI'), gIB=kid(im,'IBSCBS');
+      let hint=null;
+      if(gIB){ const gc=deep(gIB,'gCBS'); const red=gc?num(dtx(gc,'pRedAliq')):0;
+        hint={cst:tx(gIB,'CST'),cct:tx(gIB,'cClassTrib'),red,vIBS:num(dtx(gIB,'vIBS')),vCBS:num(dtx(gIB,'vCBS'))}; }
+      d.itens.push({n:det.getAttribute('nItem'),cProd:tx(pr,'cProd'),xProd:tx(pr,'xProd'),ncm:tx(pr,'NCM'),cfop:tx(pr,'CFOP'),
+        q:num(tx(pr,'qCom')),u:tx(pr,'uCom'),vOper,
+        icms:gIcms?num(tx(gIcms,'vICMS')):0, st:gIcms?num(tx(gIcms,'vICMSST')):0,
+        cstIcms:gIcms?(tx(gIcms,'CST')||tx(gIcms,'CSOSN')):'',
+        ipi:gIpi?num(dtx(gIpi,'vIPI')):0,
+        pis:gP?num(dtx(gP,'vPIS')):0, cstPis:gP?dtx(gP,'CST'):'',
+        cofins:gC?num(dtx(gC,'vCOFINS')):0, hint});
+    }
+    const old=S.docs.get(ch);
+    if(!old||(!old.cStat&&d.cStat)) S.docs.set(ch,d); else old.dup=(old.dup||0)+1;
+  }
+}
+
+async function carregar(fontes){
+  $('#loadErr').innerHTML=''; const prog=$('#prog'); prog.classList.remove('hidden');
+  const fila=[]; for(const f of fontes) fila.push(f);
+  let feitos=0, t0=performance.now();
+  while(fila.length){
+    const f=fila.shift();
+    try{
+      const u8=f.u8||new Uint8Array(await f.file.arrayBuffer());
+      await processarBytes(f.name,u8,fila);
+    }catch(err){S.arquivos.erros.push(f.name+': '+err.message)}
+    feitos++;
+    if(feitos%150===0||!fila.length){
+      const tot=feitos+fila.length;
+      $('#progBar').style.width=(100*feitos/tot).toFixed(1)+'%';
+      $('#progTxt').textContent=`${nf0.format(feitos)} de ${nf0.format(tot)} arquivos · ${nf0.format(S.docs.size)} notas`;
+      await sleep();
+    }
+  }
+  prog.classList.add('hidden');
+  if(!S.docs.size){ $('#loadErr').innerHTML='<div class="err">Nenhuma NF-e encontrada nos arquivos. '+esc(S.arquivos.erros.slice(0,3).join(' · '))+'</div>'; return; }
+  detectarProdutores(); iniciarApp();
+  console.log('carga',((performance.now()-t0)/1000).toFixed(1)+'s');
+}
+async function entradasDeDrop(dt){
+  const out=[];
+  async function walk(ent,path){
+    if(ent.isFile){ const file=await new Promise((r,j)=>ent.file(r,j)); out.push({name:path+file.name,file}); }
+    else if(ent.isDirectory){ const rd=ent.createReader(); let lote;
+      do{ lote=await new Promise((r,j)=>rd.readEntries(r,j)); for(const e of lote) await walk(e,path+ent.name+'/'); }while(lote.length); }
+  }
+  const items=[...dt.items].map(i=>i.webkitGetAsEntry&&i.webkitGetAsEntry()).filter(Boolean);
+  if(items.length){ for(const e of items) await walk(e,''); }
+  else for(const f of dt.files) out.push({name:f.name,file:f});
+  return out;
+}
+
+/* ===================== produtor(es) e operações ===================== */
+function validos(){ return [...S.docs.values()].filter(d=>(!d.cStat||d.cStat==='100'||d.cStat==='150')&&!S.cancel.has(d.ch)); }
+function detectarProdutores(){
+  const m=new Map();
+  for(const d of validos()) for(const [lado,p] of [['e',d.emit],['d',d.dest]]){
+    if(!p.doc) continue; let o=m.get(p.doc); if(!o){o={doc:p.doc,nome:p.nome,ne:0,nd:0};m.set(p.doc,o)}
+    if(lado==='e') o.ne++; else o.nd++;
+  }
+  S.cands=[...m.values()].sort((a,b)=>(b.ne+b.nd)-(a.ne+a.nd)).slice(0,12);
+  const salvos=(lsGet().sel||[]).filter(x=>m.has(x));
+  S.sel=new Set(salvos.length?salvos:S.cands.length?[S.cands[0].doc]:[]); carregarDecisoes();
+}
+function construirItens(){
+  const its=[], sel=S.sel; S.docInfo=new Map();
+  for(const d of validos()){
+    const eE=sel.has(d.emit.doc), eD=sel.has(d.dest.doc);
+    if(!eE&&!eD){S.docInfo.set(d.ch,{dir:'X',motivo:'não envolve o produtor'});continue}
+    if(eE&&eD){S.docInfo.set(d.ch,{dir:'X',motivo:'operação interna do grupo'});continue}
+    const saida=(eE&&d.tpNF==='1')||(eD&&d.tpNF==='0');
+    const dir=saida?'S':'E';
+    const cp=eE?d.dest:d.emit; const cpEmit=!eE;
+    // tipo da contraparte conforme o papel: comprador (PJ/PF/EXT) ou fornecedor (NORMAL/SIMPLES/PF/EXT)
+    const tipoV=cp.ext?'EXT':cp.doc.length===14?'PJ':'PF';
+    const tipoC=cp.ext?'EXT':cp.doc.length===11?'PF':(cpEmit&&['1','2','4'].includes(d.emit.crt))?'SIMPLES':'NORMAL';
+    S.docInfo.set(d.ch,{dir,cp,tipo:saida?tipoV:tipoC});
+    for(const it of d.itens){
+      let cat=S.ovCfop[it.cfop]||catCFOP(it.cfop);
+      if(cp.ext&&cat==='VENDA') cat='EXPORT';
+      // papel econômico: devolução de venda é venda (com sinal −); devolução de compra é compra
+      const role=(dir==='S')!==(cat==='DEVOL')?'S':'E', tipo=role==='S'?tipoV:tipoC;
+      // produtor rural não comercializa máquinas: venda de bem dos caps. 84/85/87/89 (ou NCM 00000000) = alienação de ativo
+      if(role==='S'&&cat==='VENDA'&&!S.ovCfop[it.cfop]&&/^(84|85|87|89|00)/.test(it.ncm)) cat='ATIVO';
+      const k=it.ncm+'|'+role;
+      const cls=S.ovNcm[k]||classeLC(it.ncm,role);
+      const pcDeb=['01','02','03','05'].includes(it.cstPis)?it.pis+it.cofins:0;
+      // tributos legados "por dentro" (ICMS, PIS/COFINS) saem do preço; ST e IPI são "por fora"
+      const vNet=Math.max(0,it.vOper-it.icms-(dir==='S'?(eE?pcDeb:0):pcDeb));
+      its.push({d,it,dir,role,cat,cls,tipo,k,vNet,ym:d.ym,ano:d.dt.slice(0,4),
+        legIcms:it.icms+(dir==='E'?it.st:0), legPc:dir==='S'?(eE?pcDeb:0):pcDeb, legIpi:dir==='E'?it.ipi:0});
+    }
+  }
+  S.todosItens=its;
+}
+function filtrarPeriodo(){
+  const p=S.params, anos=[...new Set(S.todosItens.map(x=>x.ano))].sort();
+  // padrão: ano mais recente com dados (anualizado) — acervos costumam ter lacunas em anos antigos
+  S.periodo=p.periodo==='todos'||anos.includes(p.periodo)?p.periodo:(anos[anos.length-1]||'todos');
+  S.itens=S.todosItens.filter(x=>S.periodo==='todos'||x.ano===S.periodo);
+  const yms=[...new Set(S.itens.filter(x=>CATS[x.cat].conta).map(x=>x.ym))].sort();
+  S.meses=yms;
+  let span=0;
+  if(yms.length){ const [a,b]=[yms[0],yms[yms.length-1]]; span=(+b.slice(0,4)-+a.slice(0,4))*12+(+b.slice(5)-+a.slice(5))+1; }
+  S.span=span; S.fator=p.anualizar&&span?12/span:1;
+}
+
+/* ===================== motor de simulação ===================== */
+function calcular(){
+  const p=S.params, k=S.fator;
+  // agregados da base (valores anualizados)
+  const B={vendas:0,vendasPJ:0,vendasPF:0,vendasExp:0,devVendas:0,compras:0,devCompras:0,
+    comprasTipo:{NORMAL:0,SIMPLES:0,PF:0,EXT:0},vendClasse:{},compClasse:{},outras:0,ativoVenda:0};
+  for(const x of S.itens){
+    if(!CATS[x.cat].conta){ if(x.cat==='OUTRAS') B.outras+=x.it.vOper*k; continue; }
+    const s=x.cat==='DEVOL'?-1:1, v=x.vNet*k*s;
+    if(x.role==='S'){ // venda (devolução de venda entra com sinal −)
+      if(x.cat==='ATIVO'){B.ativoVenda+=v;continue}
+      if(s<0) B.devVendas-=v;
+      B.vendas+=v; if(x.tipo==='EXT'||x.cat==='EXPORT') B.vendasExp+=v; else if(x.tipo==='PJ') B.vendasPJ+=v; else B.vendasPF+=v;
+      B.vendClasse[x.cls]=(B.vendClasse[x.cls]||0)+v;
+    } else { // compra (devolução de compra entra com sinal −)
+      if(s<0) B.devCompras-=v;
+      B.compras+=v; B.comprasTipo[x.tipo]+=v; B.compClasse[x.cls]=(B.compClasse[x.cls]||0)+v;
+    }
+  }
+  B.shareContrib=B.vendas>0?Math.max(0,Math.min(1,B.vendasPJ/B.vendas)):0;
+  // crédito presumido estimado: IBS/CBS embutido nas compras (cenário A, regime pleno) ÷ vendas
+  const pleno=aliq(2033,p); let embCBS=0, embIBS=0;
+  for(const x of S.itens){ if(!CATS[x.cat].conta||x.role!=='E') continue;
+    const s=x.cat==='DEVOL'?-1:1, t=taxaCompra(x,pleno,'A',B);
+    embCBS+=s*x.vNet*k*t.cbs; embIBS+=s*x.vNet*k*t.ibs; }
+  B.cpAutoCBS=B.vendas>0?Math.max(0,100*embCBS/B.vendas):0;
+  B.cpAutoIBS=B.vendas>0?Math.max(0,100*embIBS/B.vendas):0;
+  const cpCBS=p.cpModo==='auto'?B.cpAutoCBS:p.cpCBS, cpIBS=p.cpModo==='auto'?B.cpAutoIBS:p.cpIBS;
+  B.cpCBS=cpCBS; B.cpIBS=cpIBS;
+
+  const anos=ANOS.map(ano=>{
+    const al=aliq(ano,p), lg=LEG[ano];
+    const cpY={cbs:al.teste?0:cpCBS*(al.cbs/p.cbs)/100, ibs:al.teste?0:cpIBS*(al.ibs/p.ibs)/100};
+    const A={legV:0,legC:0,novoC:0,cp:0}, Bc={legV:0,legC:0,deb:0,debCBS:0,debIBS:0,cred:0,credCBS:0,credIBS:0,semCred:0,debNC:0};
+    for(const x of S.itens){
+      if(!CATS[x.cat].conta) continue;
+      const s=x.cat==='DEVOL'?-1:1, base=x.vNet*k*s;
+      const leg=(x.legIcms*lg.icms+x.legPc*lg.pc+x.legIpi*lg.ipi)*k*s;
+      if(x.role==='S'){
+        if(x.cat==='ATIVO'){ // venda de imobilizado: tributada só no regime regular
+          const t=taxaVenda(x,al); Bc.deb+=base*(t.cbs+t.ibs); Bc.debCBS+=base*t.cbs; Bc.debIBS+=base*t.ibs; continue; }
+        A.legV+=leg; Bc.legV+=leg;
+        const t=taxaVenda(x,al);
+        Bc.deb+=base*(t.cbs+t.ibs); Bc.debCBS+=base*t.cbs; Bc.debIBS+=base*t.ibs;
+        if(x.tipo==='PJ'&&x.cat!=='EXPORT') A.cp+=base*(cpY.cbs+cpY.ibs);
+        if(x.tipo==='PF') Bc.debNC+=base*(t.cbs+t.ibs);
+      } else {
+        A.legC+=leg; Bc.legC+=leg;
+        const tA=taxaCompra(x,al,'A',B), tB=taxaCompra(x,al,'B',B);
+        A.novoC+=base*(tA.cbs+tA.ibs);
+        if(x.cls==='SEM_CRED'){ Bc.semCred+=base*(tB.cbs+tB.ibs); continue; }
+        if(x.tipo==='PF'){ if(p.cpEntradas){ Bc.cred+=base*(cpY.cbs+cpY.ibs); Bc.credCBS+=base*cpY.cbs; Bc.credIBS+=base*cpY.ibs; } continue; }
+        Bc.cred+=base*(tB.cbs+tB.ibs); Bc.credCBS+=base*tB.cbs; Bc.credIBS+=base*tB.ibs;
+      }
+    }
+    A.custo=A.legV+A.legC+A.novoC; A.cadeia=A.custo-A.cp;
+    Bc.saldo=Bc.deb-Bc.cred; Bc.recolher=Math.max(0,Bc.saldo); Bc.credor=Math.max(0,-Bc.saldo);
+    Bc.custo=Bc.legV+Bc.legC+Bc.semCred; Bc.cadeia=Bc.custo+Bc.debNC;
+    return {ano,al,cpY,A,B:Bc,dif:A.cadeia-Bc.cadeia};
+  });
+  // ponto de equilíbrio (2033): crédito presumido, em % das vendas a PJ, que iguala A e B
+  const a33=anos[anos.length-1];
+  B.equilibrio=B.vendasPJ>0?100*(a33.A.custo-a33.B.cadeia)/B.vendasPJ:null;
+  S.res={base:B,anos};
+}
+function taxaVenda(x,al){
+  if(al.teste||x.tipo==='EXT'||x.cat==='EXPORT'||x.cat==='EXP_IND') return {cbs:0,ibs:0};
+  const red=x.cls==='COMB'?S.params.combRed:CLASSES[x.cls].red;
+  const m=(1-red/100)/100; return {cbs:al.cbs*m,ibs:al.ibs*m};
+}
+function taxaCompra(x,al,cen,B){
+  const p=S.params;
+  if(al.teste) return {cbs:0,ibs:0};
+  if(x.tipo==='PF') return {cbs:0,ibs:0};                       // fornecedor não contribuinte: sem IBS/CBS no preço
+  if(x.tipo==='SIMPLES'){ const f=(al.cbs+al.ibs)/(p.cbs+p.ibs)*p.credSimples/100, sh=p.cbs/(p.cbs+p.ibs);
+    return {cbs:f*sh,ibs:f*(1-sh)}; }
+  let red=x.cls==='COMB'?p.combRed:CLASSES[x.cls].red;
+  if(x.cls==='RED60_INS'&&p.diferimento){                       // art. 138, § 2º
+    if(cen==='B') return {cbs:0,ibs:0};
+    const nd=1-B.shareContrib;                                    // só a parcela usada em vendas a quem tem crédito do art. 168
+    const m=nd*(1-red/100)/100; return {cbs:al.cbs*m,ibs:al.ibs*m};
+  }
+  if(x.cls==='MAQ'&&cen==='A'&&p.maqZero) return {cbs:0,ibs:0}; // art. 110
+  if(x.cls==='ISENTO') return {cbs:0,ibs:0};
+  const m=(1-red/100)/100; return {cbs:al.cbs*m,ibs:al.ibs*m};
+}
+
+/* ===================== app ===================== */
+function iniciarApp(){
+  $('#welcome').classList.add('hidden'); $('#app').classList.remove('hidden');
+  $('#btnCsv').classList.remove('hidden'); $('#btnPrint').classList.remove('hidden');
+  recompor();
+}
+function recompor(){ construirItens(); filtrarPeriodo(); calcular(); renderTudo(); }
+function recalcular(){ filtrarPeriodo(); calcular(); renderTudo(); }
+function renderTudo(){ renderId(); renderGeral(); renderVendas(); renderCompras(); renderClass(); renderParam(); renderDocs(); renderMetodo(); }
+
+function situacaoLimite(){
+  const r=S.res.base.vendas, L=S.params.limite;
+  if(r<L) return {cls:'ok',txt:'Abaixo do limite',det:'Pode permanecer não contribuinte (art. 164) ou optar pelo regime regular (art. 165).',A:true};
+  if(r<=L*1.2) return {cls:'warn',txt:'Acima do limite (até 20%)',det:'Excesso de até 20%: passa a contribuinte no ano-calendário seguinte (art. 164, § 3º).',A:false};
+  return {cls:'crit',txt:'Acima do limite (> 20%)',det:'Contribuinte a partir do 2º mês seguinte ao excesso (art. 164, § 2º). Cenário A só para comparação.',A:false};
+}
+function renderId(){
+  const sel=[...S.sel], nomes=S.cands.filter(c=>S.sel.has(c.doc));
+  const tipo=sel.every(d=>d.length===11)?'Pessoa física':sel.every(d=>d.length===14)?'Pessoa jurídica':'Grupo PF + PJ';
+  const lim=situacaoLimite();
+  $('#who').innerHTML=`<h2>${esc(nomes.map(n=>n.nome).join(' + ')||'Selecione o produtor')}</h2>
+   <div class="meta"><span>${sel.map(fmtDoc).join(' · ')}</span><span class="pill">${tipo}</span>
+   <span class="st ${lim.cls}">${lim.txt}</span><span>Receita base anual: <b>${R(S.res.base.vendas)}</b></span></div>`;
+  const anos=[...new Set(S.todosItens.map(x=>x.ano))].sort();
+  const p=S.params;
+  $('#period').innerHTML=`<label>Ano-base <select id="selPer"><option value="todos" ${S.periodo==='todos'?'selected':''}>Todo o período</option>${anos.map(a=>`<option ${S.periodo===a?'selected':''}>${a}</option>`).join('')}</select></label>
+    <label class="chkl"><input type="checkbox" id="chkAnu" ${p.anualizar?'checked':''}> anualizar</label>
+    <span class="filter-note">${S.meses.length} ${S.meses.length===1?'mês':'meses'} com notas em ${S.span}${S.meses.length<S.span?' (há meses sem nota — confira se o acervo está completo)':''}${S.meses.length?' ('+ymLabel(S.meses[0])+' a '+ymLabel(S.meses[S.meses.length-1])+')':''} · fator ${nf2.format(S.fator)}</span>`;
+  $('#selPer').onchange=e=>{p.periodo=e.target.value;salvar();recalcular()};
+  $('#chkAnu').onchange=e=>{p.anualizar=e.target.checked;salvar();recalcular()};
+  const pc=c=>`<label class="pchk ${S.sel.has(c.doc)?'on':''}"><input type="checkbox" data-doc="${c.doc}" ${S.sel.has(c.doc)?'checked':''}>
+      <b>${esc(c.nome||'(sem nome)')}</b><span>${fmtDoc(c.doc)} · ${nf0.format(c.ne)} emitidas · ${nf0.format(c.nd)} recebidas</span></label>`;
+  const vis=S.cands.filter((c,i)=>i<6||S.sel.has(c.doc)), mais=S.cands.filter(c=>!vis.includes(c));
+  $('#prods').innerHTML=`<span class="filter-note">Produtor(es) analisado(s) — marque mais de um para somar as receitas (art. 164, § 6º):</span>`+
+    vis.map(pc).join('')+(mais.length?`<details class="mais"><summary>mais ${mais.length}</summary><div class="prods">${mais.map(pc).join('')}</div></details>`:'');
+  $$('#prods input').forEach(i=>i.onchange=()=>{ if(i.checked) S.sel.add(i.dataset.doc); else S.sel.delete(i.dataset.doc);
+    carregarDecisoes(); salvar(); recompor(); });
+}
+
+function kpi(k,v,d,cor){return `<div class="kpi" ${cor?`style="border-top-color:${cor}"`:''}><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d||''}</div></div>`}
+function renderGeral(){
+  const {base:B,anos}=S.res, a33=anos[anos.length-1], a26=anos[0], lim=situacaoLimite();
+  const acum=f=>anos.filter(a=>a.ano>=2027).reduce((s,a)=>s+f(a),0);
+  const difAc=acum(a=>a.dif);
+  $('#kpis').innerHTML=
+    kpi('Receita bruta (base anual)',RC(B.vendas),`${PC(100*B.shareContrib)} para PJ · ${PC(B.vendas?100*B.vendasExp/B.vendas:0)} exportação`)+
+    kpi('Crédito presumido de equilíbrio',B.equilibrio==null?'—':PC(B.equilibrio),`acima disso, ser não contribuinte é melhor · em uso: ${PC(B.cpCBS+B.cpIBS)}`,'var(--s3)')+
+    kpi('Limite art. 164',`<span class="st ${lim.cls}">${lim.txt}</span>`,`${PC(100*B.vendas/S.params.limite)} de ${RC(S.params.limite)}`)+
+    kpi('Custo na cadeia 2033 · A',RC(a33.A.cadeia),`${PC(B.vendas?100*a33.A.cadeia/B.vendas:0)} da receita · não contribuinte`,'var(--s2)')+
+    kpi('Custo na cadeia 2033 · B',RC(a33.B.cadeia),`${PC(B.vendas?100*a33.B.cadeia/B.vendas:0)} da receita · regime regular`,'var(--s1)')+
+    kpi('A − B acumulado 2027–33',`<span class="${difAc>0?'pos-txt':difAc<0?'neg-txt':''}">${RC(difAc)}</span>`,
+      !lim.A?'só comparativo: acima do limite, A não está disponível':difAc>0?'favorece o regime regular':difAc<0?'favorece permanecer não contribuinte':'neutro');
+  // leitura
+  const pct=v=>PC(B.vendas?100*v/B.vendas:0);
+  const fat=[];
+  if(B.equilibrio!=null) fat.push(`<li><b>Ponto de equilíbrio:</b> se o percentual oficial de crédito presumido (art. 168, § 4º) para os produtos vendidos ficar <b>acima de ${PC(B.equilibrio)}</b> do valor da venda, permanecer não contribuinte é mais eficiente na cadeia. Abaixo disso, o regime regular é melhor.${S.params.cpModo==='auto'?' Com o percentual estimado pelas próprias compras, o cenário A fica perto da neutralidade por construção — use o equilíbrio como referência principal.':''}</li>`);
+  if(B.ativoVenda) fat.push(`<li><b>Venda de bens do ativo:</b> ${RC(B.ativoVenda)} (máquinas e veículos) ficaram fora da receita do limite. No regime regular são tributadas, e o débito está incluído.</li>`);
+  fat.push(`<li><b>Crédito presumido que o comprador teria (A):</b> ${RC(a33.A.cp)}/ano em 2033 (${PC(B.cpCBS+B.cpIBS)} sobre as vendas a PJ${S.params.cpModo==='auto'?', estimado pela carga das próprias compras':', informado manualmente'}).</li>`);
+  fat.push(`<li><b>IBS/CBS embutido nas compras sem crédito (A):</b> ${RC(a33.A.novoC)}/ano. No regime regular esse valor vira crédito: ${RC(a33.B.cred)}.</li>`);
+  fat.push(`<li><b>Débito sobre vendas (B):</b> ${RC(a33.B.deb)}. ${RC(a33.B.debNC)} recaem sobre compradores PF ou não contribuintes, que não se creditam.</li>`);
+  if(a33.B.credor>0) fat.push(`<li><b>Saldo credor estrutural (B):</b> créditos superam débitos em ${RC(a33.B.credor)}/ano — depende de ressarcimento (art. 168, § 8º / arts. 39 a 41).</li>`);
+  const carne=S.itens.filter(x=>x.role==='S'&&CATS[x.cat].conta&&x.it.ncm.startsWith('02')&&!S.ovNcm[x.k]).reduce((t,x)=>t+x.vNet*S.fator,0);
+  if(carne>0) fat.push(`<li class="warn-li"><b>${RC(carne)}</b> de vendas com NCM de carne (cap. 02) caíram na Cesta Básica (zero). Se o produtor vende animal vivo e o comprador usou o NCM da carcaça, reclassifique para in natura (−60%) na aba Classificação.</li>`);
+  if(B.outras>0) fat.push(`<li class="warn-li"><b>${RC(B.outras)}</b> em operações com CFOP "Outras" ficaram fora do cálculo — revise na aba Classificação.</li>`);
+  const tit=!lim.A?`Receita acima do limite: o regime regular é obrigatório`:
+    a33.dif>0?`Em 2033, a opção pelo regime regular reduz o custo na cadeia em ${RC(a33.dif)}/ano (${pct(a33.dif)} da receita)`:
+    a33.dif<0?`Em 2033, permanecer não contribuinte custa ${RC(-a33.dif)}/ano a menos na cadeia (${pct(-a33.dif)} da receita)`:'Os dois cenários se equivalem em 2033';
+  $('#leitura').innerHTML=`<div class="v-head"><span class="v-ico">${!lim.A?'!':a33.dif>0?'B':'A'}</span><div><h2>${tit}</h2>
+    <p class="sub">Indicador para a decisão do contador, não recomendação automática. Sensível ao crédito presumido do art. 168, ainda não publicado — teste na aba Parâmetros.</p></div></div><ul>${fat.join('')}</ul>`;
+  // gráficos
+  barras('#chCadeia',anos.map(a=>({rot:String(a.ano),grupos:[
+    {nome:'A',pilhas:[{v:a.A.legV+a.A.legC,c:'var(--s7)',n:'Legados'},{v:a.A.novoC-a.A.cp,c:'var(--s2)',n:'IBS/CBS líquido de crédito presumido'}],tot:a.A.cadeia,mut:!lim.A},
+    {nome:'B',pilhas:[{v:a.B.legV+a.B.legC,c:'var(--s7)',n:'Legados'},{v:a.B.semCred+a.B.debNC,c:'var(--s1)',n:'IBS/CBS não recuperado'}],tot:a.B.cadeia}]})));
+  barras('#chDebCred',anos.map(a=>({rot:String(a.ano),grupos:[
+    {nome:'Débito',pilhas:[{v:a.B.deb,c:'var(--s6)',n:'Débito'}],tot:a.B.deb},
+    {nome:'Créditos',pilhas:[{v:a.B.cred,c:'var(--s4)',n:'Créditos'}],tot:a.B.cred}],linha:a.A.cp})),{linhaNome:'Crédito presumido (A)'});
+  renderProj();
+}
+function renderProj(){
+  const {base:B,anos}=S.res, u=S.unid, lim=situacaoLimite();
+  const f=v=>{ if(Math.abs(v)<0.005) v=0; return u==='p'?(B.vendas?nf2.format(100*v/B.vendas)+'%':'—'):nf2.format(v); };
+  $('#projSub').textContent=`Base anual: receita ${R(B.vendas)} · compras ${R(B.compras)} · CBS ${PC(S.params.cbs)} + IBS ${PC(S.params.ibs)} em regime pleno`;
+  const L=(rot,fn,cls='')=>`<tr class="${cls}"><td>${rot}</td>${anos.map(a=>`<td class="v">${f(fn(a))}</td>`).join('')}</tr>`;
+  const H=(rot,cls)=>`<tr class="sec ${cls||''}"><td colspan="${anos.length+1}">${rot}</td></tr>`;
+  $('#tblProj').innerHTML=`<thead><tr><th>Componente</th>${anos.map(a=>`<th class="r">${a.ano}${a.ano===2026?'<small>teste</small>':''}</th>`).join('')}</tr></thead><tbody>`+
+    `<tr class="aliq"><td>Alíquotas cheias CBS + IBS</td>${anos.map(a=>`<td class="v">${a.al.teste?'0,9 + 0,1*':nf2.format(a.al.cbs)+' + '+nf2.format(a.al.ibs)}</td>`).join('')}</tr>`+
+    `<tr class="aliq"><td>ICMS legado · PIS/COFINS</td>${anos.map(a=>`<td class="v">${nf0.format(LEG[a.ano].icms*100)}% · ${LEG[a.ano].pc?'100%':'extintos'}</td>`).join('')}</tr>`+
+    H('Cenário A — produtor não contribuinte (art. 164)'+(lim.A?'':' · indisponível: receita acima do limite'),'sa')+
+    L('Tributos legados sobre as vendas',a=>a.A.legV)+
+    L('Tributos legados embutidos nas compras',a=>a.A.legC)+
+    L('IBS/CBS embutido nas compras (sem crédito)',a=>a.A.novoC)+
+    L('= Custo tributário do produtor',a=>a.A.custo,'tot')+
+    L('(−) Crédito presumido gerado ao comprador (art. 168)',a=>-a.A.cp)+
+    L('= Custo líquido na cadeia — A',a=>a.A.cadeia,'tot big')+
+    H('Cenário B — opção pelo regime regular (art. 165)','sb')+
+    L('IBS/CBS débito sobre as vendas',a=>a.B.deb)+
+    L('&nbsp;&nbsp;CBS',a=>a.B.debCBS,'sub2')+L('&nbsp;&nbsp;IBS',a=>a.B.debIBS,'sub2')+
+    L('(−) Créditos sobre compras (inclui presumido de fornecedor PF)',a=>-a.B.cred)+
+    L('= IBS/CBS a recolher (− = saldo credor)',a=>a.B.saldo,'tot')+
+    L('Tributos legados sobre as vendas',a=>a.B.legV)+
+    L('Tributos legados embutidos nas compras',a=>a.B.legC)+
+    L('IBS/CBS sem direito a crédito (uso pessoal)',a=>a.B.semCred)+
+    L('= Custo tributário do produtor (débito repassado no preço)',a=>a.B.custo,'tot')+
+    L('(+) IBS/CBS pago por compradores PF / não contribuintes',a=>a.B.debNC)+
+    L('= Custo líquido na cadeia — B',a=>a.B.cadeia,'tot big')+
+    H('Comparação')+
+    L('A − B (positivo favorece o regime regular)',a=>a.dif,'tot dif')+
+    `</tbody>`;
+  $$('#segUnid button').forEach(b=>b.classList.toggle('on',b.dataset.u===u));
+}
+
+/* ===================== vendas / compras ===================== */
+function agrupar(filtro,chave,rot){
+  const m=new Map(), k=S.fator;
+  for(const x of S.itens){ if(!CATS[x.cat].conta||!filtro(x)) continue;
+    const s=x.cat==='DEVOL'?-1:1, key=chave(x); let o=m.get(key); if(!o){o={key,rot:rot(x),v:0,n:0,x};m.set(key,o)}
+    o.v+=x.vNet*k*s; o.n++; }
+  return [...m.values()].sort((a,b)=>b.v-a.v);
+}
+const ehVenda=x=>x.role==='S'&&x.cat!=='ATIVO';
+const ehCompra=x=>x.role==='E';
+function hbars(el,rows,opt={}){
+  const max=Math.max(...rows.map(r=>Math.abs(r.v)),1);
+  $(el).innerHTML=rows.length?`<div class="hb">${rows.map(r=>`<div class="hb-row" ${r.click?`data-k="${esc(r.click)}"`:''}><div class="hb-l"><b>${r.l}</b><span>${r.s||''}</span></div>
+    <div class="hb-bars"><div class="hb-bar" style="width:${100*Math.abs(r.v)/max}%;background:${r.c||'var(--s1)'}"></div></div><div class="hb-v"><b>${RC(r.v)}</b>${r.r?'<br>'+r.r:''}</div></div>`).join('')}</div>`:'<div class="empty">Sem dados</div>';
+  if(opt.click) $$(el+' .hb-row').forEach(e=>e.onclick=()=>opt.click(e.dataset.k));
+}
+function renderVendas(){
+  const B=S.res.base, a33=S.res.anos[7];
+  $('#kpisV').innerHTML=kpi('Receita (base anual)',RC(B.vendas),`${nf0.format(S.itens.filter(ehVenda).length)} itens`)+
+    kpi('Para PJ',RC(B.vendasPJ),PC(B.vendas?100*B.vendasPJ/B.vendas:0)+' — comprador com crédito','var(--s1)')+
+    kpi('Para PF',RC(B.vendasPF),PC(B.vendas?100*B.vendasPF/B.vendas:0)+' — sem crédito','var(--s3)')+
+    kpi('Exportação',RC(B.vendasExp),'imune (sem débito)','var(--s2)')+
+    kpi('Devoluções de venda',RC(B.devVendas),'já abatidas da receita')+
+    kpi('Débito IBS/CBS 2033 (B)',RC(a33.B.deb),PC(B.vendas?100*a33.B.deb/B.vendas:0)+' efetivo','var(--s6)');
+  // por mês
+  const meses=S.meses, k=S.fator, mm={};
+  for(const x of S.itens){ if(!CATS[x.cat].conta||!ehVenda(x)) continue; const s=x.cat==='DEVOL'?-1:1;
+    const o=mm[x.ym]||(mm[x.ym]={PJ:0,PF:0,EXT:0}); const t=x.tipo==='EXT'||x.cat==='EXPORT'?'EXT':x.tipo; o[t]=(o[t]||0)+x.vNet*s; }
+  barras('#chVMes',meses.map(m=>({rot:ymLabel(m),grupos:[{nome:'',pilhas:[{v:mm[m]?.PJ||0,c:'var(--s1)',n:'PJ'},{v:mm[m]?.PF||0,c:'var(--s3)',n:'PF'},{v:mm[m]?.EXT||0,c:'var(--s2)',n:'Exportação'}],tot:(mm[m]?.PJ||0)+(mm[m]?.PF||0)+(mm[m]?.EXT||0)}]})),{h:220});
+  const cls=Object.entries(B.vendClasse).filter(e=>Math.abs(e[1])>0.005).sort((a,b)=>b[1]-a[1]);
+  hbars('#vClasses',cls.map(([c,v])=>({l:CLASSES[c].curto,s:'redução '+(c==='COMB'?S.params.combRed:CLASSES[c].red)+'%',v,c:CLASSES[c].cor,r:PC(B.vendas?100*v/B.vendas:0)})));
+  hbars('#vNcm',agrupar(ehVenda,x=>x.k,x=>fmtNcm(x.it.ncm)).slice(0,12).map(o=>({l:fmtNcm(o.x.it.ncm)+' · '+esc(o.x.it.xProd.slice(0,40)),s:CLASSES[S.ovNcm[o.key]||classeLC(o.x.it.ncm,'S')].curto,v:o.v,c:CLASSES[o.x.cls].cor,click:o.x.it.ncm})),{click:n=>{abrirTab('class');$('#qNcm').value=n;renderClass()}});
+  hbars('#vCli',agrupar(ehVenda,x=>S.docInfo.get(x.d.ch).cp.doc,x=>S.docInfo.get(x.d.ch).cp.nome).slice(0,12).map(o=>{const i=S.docInfo.get(o.x.d.ch);
+    return {l:esc(i.cp.nome||'(sem nome)'),s:fmtDoc(i.cp.doc)+' · '+(o.x.tipo==='EXT'?'exterior':o.x.tipo),v:o.v,c:i.cp.doc.length===14?'var(--s1)':'var(--s3)'}}));
+}
+const TIPOS={NORMAL:{n:'PJ regime normal',c:'var(--s1)',d:'crédito integral'},SIMPLES:{n:'Simples Nacional / MEI',c:'var(--s3)',d:'crédito do valor pago no DAS'},
+  PF:{n:'Pessoa física',c:'var(--s5)',d:'crédito presumido se produtor rural'},EXT:{n:'Importação',c:'var(--s2)',d:'crédito integral'}};
+function renderCompras(){
+  const B=S.res.base, a33=S.res.anos[7], al=a33.al;
+  $('#kpisC').innerHTML=kpi('Compras (base anual)',RC(B.compras),`${nf0.format(S.itens.filter(ehCompra).length)} itens`)+
+    kpi('De PJ regime normal',RC(B.comprasTipo.NORMAL),PC(B.compras?100*B.comprasTipo.NORMAL/B.compras:0),'var(--s1)')+
+    kpi('De Simples / MEI',RC(B.comprasTipo.SIMPLES),PC(B.compras?100*B.comprasTipo.SIMPLES/B.compras:0),'var(--s3)')+
+    kpi('De pessoa física',RC(B.comprasTipo.PF),PC(B.compras?100*B.comprasTipo.PF/B.compras:0),'var(--s5)')+
+    kpi('Créditos 2033 (B)',RC(a33.B.cred),PC(B.compras?100*a33.B.cred/B.compras:0)+' das compras','var(--s4)')+
+    kpi('Custo sem crédito 2033 (A)',RC(a33.A.novoC),'IBS/CBS embutido','var(--s2)');
+  hbars('#cReg',Object.entries(B.comprasTipo).filter(e=>Math.abs(e[1])>0.005).sort((a,b)=>b[1]-a[1]).map(([t,v])=>({l:TIPOS[t].n,s:TIPOS[t].d,v,c:TIPOS[t].c,r:PC(B.compras?100*v/B.compras:0)})));
+  hbars('#cClasses',Object.entries(B.compClasse).filter(e=>Math.abs(e[1])>0.005).sort((a,b)=>b[1]-a[1]).map(([c,v])=>({l:CLASSES[c].curto,s:CLASSES[c].nome,v,c:CLASSES[c].cor,r:PC(B.compras?100*v/B.compras:0)})));
+  const cred=x=>{const t=taxaCompra(x,al,'B',B); return x.tipo==='PF'?(S.params.cpEntradas?a33.cpY.cbs+a33.cpY.ibs:0):x.cls==='SEM_CRED'?0:t.cbs+t.ibs};
+  const g=agrupar(ehCompra,x=>x.k,x=>fmtNcm(x.it.ncm));
+  for(const o of g){ o.cr=0; }
+  for(const x of S.itens){ if(!CATS[x.cat].conta||!ehCompra(x)) continue; const o=g.find(z=>z.key===x.k); if(o) o.cr+=(x.cat==='DEVOL'?-1:1)*x.vNet*S.fator*cred(x); }
+  hbars('#cNcm',g.slice(0,12).map(o=>({l:fmtNcm(o.x.it.ncm)+' · '+esc(o.x.it.xProd.slice(0,40)),s:CLASSES[o.x.cls].curto,v:o.v,c:CLASSES[o.x.cls].cor,r:'crédito '+RC(o.cr),click:o.x.it.ncm})),{click:n=>{abrirTab('class');$('#qNcm').value=n;renderClass()}});
+  hbars('#cForn',agrupar(ehCompra,x=>S.docInfo.get(x.d.ch).cp.doc,x=>'').slice(0,12).map(o=>{const i=S.docInfo.get(o.x.d.ch);
+    return {l:esc(i.cp.nome||'(sem nome)'),s:fmtDoc(i.cp.doc)+' · '+TIPOS[o.x.tipo].n,v:o.v,c:TIPOS[o.x.tipo].c}}));
+}
+
+/* ===================== classificação ===================== */
+function renderClass(){
+  const q=($('#qNcm').value||'').toLowerCase().replace(/\./g,''), fDiv=$('#fDiv').checked, fOv=$('#fOv').checked, k=S.fator;
+  const m=new Map();
+  for(const x of S.itens){ if(!CATS[x.cat].conta) continue;
+    let o=m.get(x.k); if(!o){o={k:x.k,ncm:x.it.ncm,dir:x.role,desc:{},v:0,n:0,xml:{}};m.set(x.k,o)}
+    o.v+=x.vNet*k*(x.cat==='DEVOL'?-1:1); o.n++; o.desc[x.it.xProd]=(o.desc[x.it.xProd]||0)+1;
+    const xc=classeXML(x.it.hint); if(xc){const lab=xc+'|'+x.it.hint.cst+'|'+x.it.hint.cct+'|'+x.it.hint.red; o.xml[lab]=(o.xml[lab]||0)+1;}
+  }
+  let rows=[...m.values()].map(o=>{
+    const [ncm,dir]=o.k.split('|'); const lc=classeLC(ncm,dir), ov=S.ovNcm[o.k];
+    const xm=Object.entries(o.xml).sort((a,b)=>b[1]-a[1])[0]; let xc=null,xlab='';
+    if(xm){const [c,cst,cct,red]=xm[0].split('|'); xc=c; xlab=`CST ${cst} · ${cct} · red. ${nf0.format(+red)}%`;}
+    const div=xc&&!xmlEquiv(xc,ov||lc);
+    return {...o,ncm,dir,lc,ov,xc,xlab,div,desc:Object.entries(o.desc).sort((a,b)=>b[1]-a[1])[0][0]};
+  });
+  const nDiv=rows.filter(r=>r.div).length;
+  $('#badgeDiv').textContent=nDiv; $('#badgeDiv').classList.toggle('hidden',!nDiv);
+  if(q) rows=rows.filter(r=>r.ncm.includes(q)||r.desc.toLowerCase().includes(q));
+  if(fDiv) rows=rows.filter(r=>r.div); if(fOv) rows=rows.filter(r=>r.ov);
+  rows.sort((a,b)=>Math.abs(b.v)-Math.abs(a.v));
+  const opts=sel=>Object.entries(CLASSES).map(([c,o])=>`<option value="${c}" ${sel===c?'selected':''}>${o.curto}</option>`).join('');
+  $('#tblNcm').innerHTML=`<thead><tr><th>NCM</th><th>Operação</th><th>Descrição (mais frequente)</th><th class="r">Itens</th><th class="r">Valor base anual</th><th>Sugestão LC 214</th><th>XML 2026 (emitente)</th><th>Sua decisão</th></tr></thead><tbody>`+
+    rows.slice(0,400).map(r=>`<tr class="${r.div?'divg':''}"><td class="mono">${fmtNcm(r.ncm)}</td><td>${r.dir==='S'?'Venda':'Compra'}</td><td>${esc(r.desc.slice(0,60))}</td>
+      <td class="v">${nf0.format(r.n)}</td><td class="v">${nf2.format(r.v)}</td><td><span class="tag" style="border-left:3px solid ${CLASSES[r.lc].cor}">${CLASSES[r.lc].curto}</span></td>
+      <td>${r.xlab?`<span class="tag ${r.div?'tag-w':''}">${r.xlab}</span>`:'<span class="muted">—</span>'}</td>
+      <td><select data-k="${r.k}" class="${r.ov?'ovr':''}"><option value="">(sugestão)</option>${opts(r.ov)}</select></td></tr>`).join('')+'</tbody>';
+  $$('#tblNcm select').forEach(s=>s.onchange=()=>{ if(s.value) S.ovNcm[s.dataset.k]=s.value; else delete S.ovNcm[s.dataset.k]; salvar(); recompor(); });
+  $('#ncmNote').textContent=`${nf0.format(rows.length)} combinações NCM × operação${rows.length>400?' (mostrando as 400 de maior valor)':''} · ${nDiv} divergência(s) entre a sugestão e o XML · ${Object.keys(S.ovNcm).length} decisão(ões) sua(s).`;
+  // CFOP
+  const mc=new Map();
+  for(const x of S.todosItens){ if(S.periodo!=='todos'&&x.ano!==S.periodo) continue;
+    let o=mc.get(x.it.cfop); if(!o){o={cfop:x.it.cfop,S:0,E:0,v:0,nat:{}};mc.set(x.it.cfop,o)} o[x.dir]++; o.v+=x.it.vOper; o.nat[x.d.natOp]=(o.nat[x.d.natOp]||0)+1; }
+  const cr=[...mc.values()].sort((a,b)=>b.v-a.v);
+  $('#tblCfop').innerHTML=`<thead><tr><th>CFOP</th><th>Natureza mais frequente</th><th class="r">Itens venda</th><th class="r">Itens compra</th><th class="r">Valor no período</th><th>Sugestão</th><th>Sua decisão</th></tr></thead><tbody>`+
+    cr.map(o=>{const sug=catCFOP(o.cfop), ov=S.ovCfop[o.cfop];
+      return `<tr class="${(ov||sug)==='OUTRAS'?'divg':''}"><td class="mono">${o.cfop}</td><td>${esc(Object.entries(o.nat).sort((a,b)=>b[1]-a[1])[0][0].slice(0,50))}</td><td class="v">${nf0.format(o.S)}</td><td class="v">${nf0.format(o.E)}</td><td class="v">${nf2.format(o.v)}</td>
+      <td><span class="tag">${CATS[sug].nome}</span></td><td><select data-c="${o.cfop}" class="${ov?'ovr':''}"><option value="">(sugestão)</option>${Object.entries(CATS).map(([c,v])=>`<option value="${c}" ${ov===c?'selected':''}>${v.nome}</option>`).join('')}</select></td></tr>`}).join('')+'</tbody>';
+  $$('#tblCfop select').forEach(s=>s.onchange=()=>{ if(s.value) S.ovCfop[s.dataset.c]=s.value; else delete S.ovCfop[s.dataset.c]; salvar(); recompor(); });
+}
+
+/* ===================== parâmetros ===================== */
+function campo(id,rot,val,opt={}){
+  if(opt.tipo==='chk') return `<label class="fl chk"><input type="checkbox" data-p="${id}" ${val?'checked':''}><span><b>${rot}</b>${opt.ajuda?`<small>${opt.ajuda}</small>`:''}</span></label>`;
+  if(opt.tipo==='sel') return `<label class="fl"><span><b>${rot}</b>${opt.ajuda?`<small>${opt.ajuda}</small>`:''}</span><select data-p="${id}">${opt.ops.map(([v,t])=>`<option value="${v}" ${val===v?'selected':''}>${t}</option>`).join('')}</select></label>`;
+  return `<label class="fl"><span><b>${rot}</b>${opt.ajuda?`<small>${opt.ajuda}</small>`:''}</span><span class="inp"><input type="number" step="${opt.step||0.01}" data-p="${id}" value="${val}" ${opt.dis?'disabled':''}>${opt.suf||'%'}</span></label>`;
+}
+function renderParam(){
+  const p=S.params, B=S.res.base;
+  $('#fAliq').innerHTML=campo('cbs','CBS — alíquota de referência',p.cbs,{ajuda:'Federal. Em 2027–2028 é reduzida em 0,1 p.p. (art. 347).'})+
+    campo('ibs','IBS — alíquota de referência (estadual + municipal)',p.ibs,{ajuda:'2027–2028: 0,05% + 0,05% (art. 344). 2029–2032: 10% a 40% da referência.'})+
+    campo('combRed','Combustíveis — redução equivalente ao regime ad rem',p.combRed,{ajuda:'Regime específico (arts. 172 a 180). Ajuste quando as alíquotas por litro forem fixadas.'});
+  $('#fCP').innerHTML=campo('cpModo','Origem do percentual',p.cpModo,{tipo:'sel',ops:[['auto','Estimar pela carga das compras do próprio produtor'],['manual','Informar manualmente']],
+      ajuda:`Estimativa atual: CBS ${PC(B.cpAutoCBS)} + IBS ${PC(B.cpAutoIBS)} = ${PC(B.cpAutoCBS+B.cpAutoIBS)} sobre o valor da venda (regime pleno).`})+
+    campo('cpCBS','Crédito presumido — parcela CBS (regime pleno)',p.cpModo==='auto'?+B.cpAutoCBS.toFixed(2):p.cpCBS,{dis:p.cpModo==='auto'})+
+    campo('cpIBS','Crédito presumido — parcela IBS (regime pleno)',p.cpModo==='auto'?+B.cpAutoIBS.toFixed(2):p.cpIBS,{dis:p.cpModo==='auto'})+
+    campo('cpEntradas','Aplicar o mesmo crédito presumido nas compras de PF (cenário B)',p.cpEntradas,{tipo:'chk',ajuda:'Quando o produtor contribuinte compra de produtor rural não contribuinte (ex.: bezerros, grãos de PF).'});
+  $('#fCompras').innerHTML=campo('diferimento','Diferimento dos insumos do Anexo IX (art. 138, § 2º)',p.diferimento,{tipo:'chk',ajuda:'B: sem IBS/CBS na compra. A: diferido só na proporção das vendas a contribuintes (§ 3º); o resto vira custo.'})+
+    campo('maqZero','Alíquota zero em máquinas para não contribuinte (art. 110)',p.maqZero,{tipo:'chk',ajuda:'Depende da lista do regulamento.'})+
+    campo('credSimples','Crédito sobre compras de optantes do Simples',p.credSimples,{ajuda:'% do valor da compra (IBS/CBS pago dentro do DAS). Em 2033; escala com a transição.'});
+  $('#fBase').innerHTML=campo('limite','Limite de receita anual (art. 164)',p.limite,{suf:'R$',step:1000,ajuda:'R$ 3.600.000,00, atualizado anualmente pelo IPCA (art. 167).'})+
+    `<p class="note">Ano-base e anualização: no cabeçalho do produtor. Receita usada no teste do limite: vendas líquidas de devoluções, incluindo exportação.</p>
+    <button class="btn" id="btnResetP">Restaurar parâmetros padrão</button>`;
+  $$('[data-p]').forEach(i=>i.onchange=()=>{const k=i.dataset.p;
+    p[k]=i.type==='checkbox'?i.checked:i.tagName==='SELECT'?i.value:num(i.value);
+    if(k==='cpModo'&&i.value==='manual'&&!p.cpCBS&&!p.cpIBS){p.cpCBS=+B.cpAutoCBS.toFixed(2);p.cpIBS=+B.cpAutoIBS.toFixed(2);}
+    salvar(); recalcular();});
+  $('#btnResetP').onclick=()=>{const per=p.periodo,an=p.anualizar;S.params=Object.assign({},DEF,{periodo:per,anualizar:an});salvar();recalcular()};
+  $('#tblCal').innerHTML=`<thead><tr><th>Ano</th><th class="r">CBS</th><th class="r">IBS</th><th class="r">ICMS</th><th class="r">PIS/COFINS</th><th class="r">IPI</th><th>Observação</th></tr></thead><tbody>`+
+    ANOS.map(a=>{const al=aliq(a,p),lg=LEG[a];return `<tr><td>${a}</td><td class="v">${al.teste?'0,90%*':PC(al.cbs)}</td><td class="v">${al.teste?'0,10%*':PC(al.ibs)}</td><td class="v">${nf0.format(lg.icms*100)}%</td><td class="v">${lg.pc?'100%':'—'}</td><td class="v">${lg.ipi?'100%':'zero¹'}</td>
+    <td>${{2026:'Ano-teste: destaque compensável com PIS/COFINS',2027:'CBS plena; PIS/COFINS extintos; IBS 0,1%',2028:'Mantém 2027',2029:'IBS 10% · ICMS 90%',2030:'IBS 20% · ICMS 80%',2031:'IBS 30% · ICMS 70%',2032:'IBS 40% · ICMS 60%',2033:'Regime pleno; ICMS/ISS extintos'}[a]}</td></tr>`}).join('')+
+    `</tbody>`;
+}
+
+/* ===================== documentos ===================== */
+function renderDocs(){
+  const a=S.arquivos, todos=[...S.docs.values()];
+  const canc=todos.filter(d=>S.cancel.has(d.ch)||d.cStat==='101'||d.cStat==='135').length;
+  const outr=todos.filter(d=>d.cStat&&!['100','150','101','135'].includes(d.cStat)).length;
+  const fora=[...S.docInfo.values()].filter(i=>i.dir==='X').length;
+  const semProt=todos.filter(d=>!d.cStat).length;
+  const dups=todos.reduce((s,d)=>s+(d.dup||0),0);
+  const al=[];
+  al.push(['info',`${nf0.format(a.xml)} XML(s) de NF-e lido(s), ${nf0.format(a.zip)} ZIP(s), ${nf0.format(a.rar)} RAR(s), ${nf0.format(a.evento)} evento(s) → ${nf0.format(S.docs.size)} notas únicas`]);
+  if(dups) al.push(['info',`${nf0.format(dups)} arquivo(s) repetido(s) da mesma chave — contados uma vez`]);
+  if(canc) al.push(['warn',`${nf0.format(canc)} nota(s) cancelada(s) — excluídas`]);
+  if(outr) al.push(['warn',`${nf0.format(outr)} nota(s) denegada(s) ou com outra situação — excluídas`]);
+  if(semProt) al.push(['warn',`${nf0.format(semProt)} nota(s) sem protocolo de autorização — incluídas; confira se foram autorizadas`]);
+  if(fora) al.push(['info',`${nf0.format(fora)} nota(s) não envolvem o produtor selecionado ou são internas ao grupo — fora do cálculo`]);
+  if(a.ignorados.length) al.push(['warn',`${nf0.format(a.ignorados.length)} arquivo(s) ignorado(s) (não são NF-e): ${esc(a.ignorados.slice(0,4).join(', '))}${a.ignorados.length>4?'…':''}`]);
+  if(a.erros.length) al.push(['crit',`${nf0.format(a.erros.length)} erro(s) de leitura: ${esc(a.erros.slice(0,4).join(' · '))}`]);
+  const nAl=al.filter(x=>x[0]!=='info').length;
+  $('#badgeDocs').textContent=nAl; $('#badgeDocs').classList.toggle('hidden',!nAl);
+  $('#alertas').innerHTML='<h2>Leitura dos arquivos</h2>'+al.map(([c,t])=>`<div class="alrt"><span class="st ${c}">${c==='info'?'info':c==='warn'?'atenção':'erro'}</span>${t}</div>`).join('');
+  const q=($('#qDoc').value||'').toLowerCase(), fd=$('#fDir').value;
+  let ds=todos.map(d=>({d,i:S.docInfo.get(d.ch)||{dir:'X',motivo:S.cancel.has(d.ch)?'cancelada':'situação '+d.cStat}}));
+  if(fd) ds=ds.filter(o=>o.i.dir===fd);
+  if(q) ds=ds.filter(({d})=>(d.nNF+' '+d.ch+' '+d.emit.nome+' '+d.dest.nome+' '+d.emit.doc+' '+d.dest.doc+' '+d.natOp+' '+d.itens.map(i=>i.cfop).join(' ')).toLowerCase().includes(q));
+  ds.sort((a,b)=>b.d.dt.localeCompare(a.d.dt));
+  const PG=100, np=Math.max(1,Math.ceil(ds.length/PG)); S.pgDoc=Math.min(S.pgDoc,np-1);
+  $('#tblDocs').innerHTML=`<thead><tr><th>Data</th><th>Nº</th><th>Emitente</th><th>Destinatário</th><th>Natureza</th><th>CFOP</th><th>Para o produtor</th><th class="r">Valor</th></tr></thead><tbody>`+
+    ds.slice(S.pgDoc*PG,(S.pgDoc+1)*PG).map(({d,i})=>`<tr><td>${d.dt.split('-').reverse().join('/')}</td><td title="${d.ch}">${d.nNF}<small class="muted"> s${d.serie}${d.tpNF==='0'?' · entrada':''}</small></td>
+      <td>${esc(d.emit.nome.slice(0,34))}<br><small class="muted">${fmtDoc(d.emit.doc)}${d.emit.crt?' · CRT '+d.emit.crt:''}</small></td>
+      <td>${esc(d.dest.nome.slice(0,34))}<br><small class="muted">${fmtDoc(d.dest.doc)}</small></td><td>${esc(d.natOp.slice(0,30))}</td>
+      <td class="mono">${[...new Set(d.itens.map(x=>x.cfop))].join(' ')}</td>
+      <td>${i.dir==='S'?'<span class="tag t-s">Venda</span>':i.dir==='E'?'<span class="tag t-e">Compra</span>':`<span class="tag">${esc(i.motivo)}</span>`}</td><td class="v">${nf2.format(d.vNF)}</td></tr>`).join('')+'</tbody>';
+  $('#pgDocs').innerHTML=`<span>${nf0.format(ds.length)} nota(s)</span><span><button class="btn" id="pgA" ${S.pgDoc?'':'disabled'}>‹</button> página ${S.pgDoc+1} de ${np} <button class="btn" id="pgB" ${S.pgDoc<np-1?'':'disabled'}>›</button></span>`;
+  $('#pgA').onclick=()=>{S.pgDoc--;renderDocs()}; $('#pgB').onclick=()=>{S.pgDoc++;renderDocs()};
+}
+
+/* ===================== método ===================== */
+function renderMetodo(){
+  $('#metodo').innerHTML=`<h2>Como a simulação funciona</h2>
+<h3>1. Leitura das notas</h3>
+<p>Cada XML de NF-e/NFP-e é lido no navegador. Notas canceladas (evento 110111 ou cStat 101/135) e denegadas saem do cálculo, e chaves repetidas contam uma vez. A direção é definida em relação ao produtor selecionado:</p>
+<ul><li><b>Venda do produtor:</b> nota emitida por ele (tpNF=1) ou <b>nota de entrada emitida pelo comprador</b> com o produtor como destinatário (tpNF=0) — o caso comum da compra de gado e grãos de produtor PF.</li>
+<li><b>Compra do produtor:</b> nota de terceiro destinada a ele (tpNF=1), ou nota de entrada que ele mesmo emitiu.</li>
+<li>Venda de máquinas, equipamentos e veículos (capítulos 84, 85, 87 e 89, ou NCM 00000000) pelo produtor é tratada como alienação de ativo: fora da receita do limite do art. 164, tributada no regime regular.</li>
+<li>O CFOP define a natureza (venda, devolução, remessa, transferência, exportação). Remessas, transferências e CFOP 5929/6929 ficam fora; "Outras" (x949, x910) fica fora até você decidir.</li></ul>
+<h3>2. Base de cálculo</h3>
+<p>Premissa de <b>preço líquido constante</b>: o valor da operação sem os tributos "por dentro" (ICMS e PIS/COFINS) é mantido, e o IBS/CBS incide "por fora" sobre ele. Os tributos legados destacados nas notas viram o ponto de partida e diminuem conforme o calendário da transição.</p>
+<h3>3. Os dois cenários</h3>
+<p><b>A — Não contribuinte (art. 164):</b> o produtor PF ou PJ com receita anual abaixo de R$ 3,6 milhões não recolhe IBS/CBS e não toma crédito. O IBS/CBS das compras vira custo, exceto: insumos do Anexo IX com diferimento (art. 138, § 2º, só na parcela vendida a contribuintes — § 3º) e máquinas agrícolas com alíquota zero (art. 110). Quem compra dele e é contribuinte apropria <b>crédito presumido</b> (art. 168).</p>
+<p><b>B — Regime regular (art. 165):</b> o produtor destaca IBS/CBS nas vendas (com as reduções dos arts. 125, 137, 138 e 148) e credita o imposto das compras (crédito financeiro amplo, art. 47). A opção vale a partir do mês seguinte e é irretratável no ano-calendário (art. 165, §§ 1º e 2º).</p>
+<h3>4. Custo líquido na cadeia</h3>
+<p>Olhar só o produtor engana: no cenário B ele repassa o débito no preço e recupera os créditos, então seu custo parece sempre menor. A comparação justa soma o efeito no comprador:</p>
+<ul><li><b>A:</b> custo do produtor − crédito presumido que o comprador contribuinte ganha. É o "bônus" que o produtor pode negociar no preço.</li>
+<li><b>B:</b> custo do produtor + IBS/CBS pago por compradores PF ou não contribuintes, que não se creditam.</li></ul>
+<p>Quando A − B é positivo, a opção pelo regime regular tende a ser vantajosa. Quando é negativo, ser não contribuinte é mais eficiente. Ficam fora da conta: custo de conformidade, fluxo de caixa do split payment, prazo de ressarcimento de saldo credor e poder de negociação de preço.</p>
+<p><b>Ponto de equilíbrio:</b> o percentual de crédito presumido (sobre as vendas a PJ, em regime pleno) que torna A e B iguais. Como os percentuais oficiais do art. 168 serão médias nacionais por produto (§§ 5º e 6º), compare o equilíbrio do cliente com o percentual que vier a ser publicado para o produto dele.</p>
+<h3>5. Classificação por NCM</h3>
+<ul><li><b>Zero:</b> Cesta Básica, Anexo I (art. 125) e hortícolas, frutas e ovos, Anexo XV (art. 148). Exceção: o leite (0401) vendido pelo produtor à indústria fica como in natura (−60%), porque o Anexo I exige leite para consumo direto.</li>
+<li><b>−60%:</b> produtos agropecuários in natura (art. 137 — inclui secagem, limpeza, debulha, descaroçamento, resfriamento) e insumos do Anexo IX (art. 138).</li>
+<li>Nas compras, grãos e cereais (capítulos 10 a 12) e farelos (23) são tratados como insumo para ração ou semente (Anexo IX, itens 10 e 19). Nas vendas, como produto in natura.</li>
+<li>Quando o XML já traz o grupo IBSCBS (leiaute 2026), a classificação do emitente aparece como evidência e as divergências ficam marcadas. A decisão final é da coluna "Sua decisão".</li></ul>
+<h3>6. Transição (EC 132/2023 e LC 214/2025)</h3>
+<p>2026: CBS 0,9% + IBS 0,1%, compensáveis (efeito nulo). 2027–2028: CBS plena menos 0,1 p.p. (art. 347), IBS 0,05% + 0,05% (art. 344), PIS/COFINS extintos e IPI zerado. 2029–2032: IBS a 10%, 20%, 30% e 40% da referência (art. 361 e seguintes), ICMS a 90%, 80%, 70% e 60%. 2033: regime pleno.</p>
+<h3>Limitações</h3>
+<ul><li>Alíquotas de referência e percentuais do crédito presumido ainda não fixados: são parâmetros.</li>
+<li>O teste do limite usa só a receita presente nos XMLs. Receitas sem NF-e e participações em outras PJ agropecuárias (art. 164, § 6º) precisam ser somadas.</li>
+<li>Produtor integrado (art. 164, § 1º), cooperativas (§ 5º e art. 168, § 9º) e regimes específicos exigem análise própria.</li>
+<li>Tributos legados embutidos nas compras são estimados pelo destaque na nota, não pela carga cumulativa real da cadeia.</li>
+<li>FUNRURAL, ITR e IR não fazem parte da reforma do consumo e não entram na conta.</li></ul>`;
+}
+
+/* ===================== gráfico de barras agrupadas/empilhadas ===================== */
+function barras(el,dados,opt={}){
+  const box=$(el), W=Math.max(320,box.clientWidth||600), H=opt.h||260, pl=64, pr=10, pt=12, pb=28;
+  const tops=dados.flatMap(d=>d.grupos.map(g=>g.pilhas.reduce((s,p)=>s+Math.max(0,p.v),0))).concat(dados.map(d=>d.linha||0));
+  const bots=dados.flatMap(d=>d.grupos.map(g=>g.pilhas.reduce((s,p)=>s+Math.min(0,p.v),0)));
+  let max=Math.max(...tops,1), min=Math.min(...bots,0);
+  const step=nice((max-min)/4); max=Math.ceil(max/step)*step; min=Math.floor(min/step)*step;
+  const y=v=>pt+(H-pt-pb)*(max-v)/(max-min||1);
+  const n=dados.length, bw=(W-pl-pr)/Math.max(n,1), gN=Math.max(...dados.map(d=>d.grupos.length),1);
+  const barW=Math.min(34,(bw*0.72)/gN);
+  let s=`<svg viewBox="0 0 ${W} ${H}" height="${H}">`;
+  for(let v=min;v<=max+1e-9;v+=step) s+=`<line class="gl" x1="${pl}" x2="${W-pr}" y1="${y(v)}" y2="${y(v)}"/><text x="${pl-6}" y="${y(v)+4}" text-anchor="end">${RC(v).replace('R$ ','')}</text>`;
+  s+=`<line class="base" x1="${pl}" x2="${W-pr}" y1="${y(0)}" y2="${y(0)}"/>`;
+  const pts=[];
+  dados.forEach((d,i)=>{
+    const cx=pl+bw*i+bw/2, x0=cx-barW*gN/2;
+    d.grupos.forEach((g,j)=>{ let up=0,dn=0; const x=x0+j*barW+1;
+      g.pilhas.forEach(p=>{ if(!p.v) return; const a=p.v>0?up:dn, b=a+p.v; if(p.v>0) up=b; else dn=b;
+        s+=`<rect x="${x}" width="${barW-2}" y="${Math.min(y(a),y(b))}" height="${Math.max(1,Math.abs(y(a)-y(b)))}" fill="${p.c}" ${g.mut?'opacity=".35"':''} rx="2"/>`; });
+      if(gN>1&&g.nome.length<=2) s+=`<text x="${x+barW/2-1}" y="${H-pb+24}" text-anchor="middle" style="font-size:9px">${g.nome}</text>`;
+    });
+    s+=`<text x="${cx}" y="${H-pb+(gN>1&&d.grupos[0].nome.length<=2?13:16)}" text-anchor="middle">${d.rot}</text>`;
+    if(d.linha!=null) pts.push([cx,y(d.linha)]);
+    s+=`<rect class="hit" data-i="${i}" x="${pl+bw*i}" y="${pt}" width="${bw}" height="${H-pt-pb}"/>`;
+  });
+  if(pts.length) s+=`<polyline points="${pts.map(p=>p.join(',')).join(' ')}" fill="none" stroke="var(--s3)" stroke-width="2.5"/>`+pts.map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="3.5" fill="var(--s3)"/>`).join('');
+  box.innerHTML=s+'</svg>';
+  box.querySelectorAll('.hit').forEach(h=>{const d=dados[+h.dataset.i];
+    h.onmousemove=e=>tip(e,`<div class="t">${d.rot}</div>`+d.grupos.map(g=>`<div class="r"><span>${g.nome||'Total'}</span><b>${R(g.tot)}</b></div>`+
+      (g.pilhas.length>1?g.pilhas.map(p=>`<div class="r"><span><i style="background:${p.c}"></i>${p.n}</span><b>${R(p.v)}</b></div>`).join(''):'')).join('')+
+      (d.linha!=null?`<div class="r"><span><i style="background:var(--s3)"></i>${opt.linhaNome||''}</span><b>${R(d.linha)}</b></div>`:''));
+    h.onmouseleave=()=>$('#tip').classList.remove('on');});
+}
+function nice(v){ if(v<=0) return 1; const e=Math.pow(10,Math.floor(Math.log10(v))), f=v/e; return (f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*e; }
+function tip(e,html){const t=$('#tip'); t.innerHTML=html; t.classList.add('on');
+  const w=t.offsetWidth,h=t.offsetHeight; let x=e.clientX+14,y=e.clientY+14;
+  if(x+w>innerWidth-8) x=e.clientX-w-14; if(y+h>innerHeight-8) y=e.clientY-h-14; t.style.left=x+'px'; t.style.top=y+'px';}
+
+/* ===================== exportação ===================== */
+function csv(nome,linhas){
+  const s='﻿'+linhas.map(l=>l.map(c=>typeof c==='number'?nf2.format(c).replace(/\./g,''):'"'+String(c??'').replace(/"/g,'""')+'"').join(';')).join('\r\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([s],{type:'text/csv;charset=utf-8'})); a.download=nome; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+}
+function exportarProj(){
+  const {anos,base:B}=S.res, sel=S.cands.filter(c=>S.sel.has(c.doc));
+  const L=[['Simulação da Reforma Tributária — '+sel.map(c=>c.nome+' ('+fmtDoc(c.doc)+')').join(' + ')],
+    ['Receita base anual',B.vendas],['Compras base anual',B.compras],['CBS ref.',S.params.cbs],['IBS ref.',S.params.ibs],['Crédito presumido (CBS+IBS) %',B.cpCBS+B.cpIBS],[],
+    ['Componente',...anos.map(a=>String(a.ano))]];
+  const add=(r,f)=>L.push([r,...anos.map(f)]);
+  add('A · Legados sobre vendas',a=>a.A.legV); add('A · Legados embutidos nas compras',a=>a.A.legC); add('A · IBS/CBS embutido nas compras',a=>a.A.novoC);
+  add('A · Custo do produtor',a=>a.A.custo); add('A · Crédito presumido ao comprador',a=>a.A.cp); add('A · Custo líquido na cadeia',a=>a.A.cadeia);
+  add('B · Débito IBS/CBS',a=>a.B.deb); add('B · Créditos',a=>a.B.cred); add('B · IBS/CBS a recolher (saldo)',a=>a.B.saldo);
+  add('B · Legados sobre vendas',a=>a.B.legV); add('B · Legados embutidos nas compras',a=>a.B.legC); add('B · Sem crédito (uso pessoal)',a=>a.B.semCred);
+  add('B · Custo do produtor',a=>a.B.custo); add('B · IBS/CBS pago por não contribuintes',a=>a.B.debNC); add('B · Custo líquido na cadeia',a=>a.B.cadeia);
+  add('A − B',a=>a.dif);
+  L.push([],['Itens']); L.push(['Data','Chave','Nº','Direção','Contraparte','CPF/CNPJ','Tipo','CFOP','Natureza','NCM','Produto','Classe','Valor operação','ICMS','PIS+COFINS','Base líquida']);
+  for(const x of S.itens){ const i=S.docInfo.get(x.d.ch);
+    L.push([x.d.dt,x.d.ch,x.d.nNF,(x.role==='S'?'Venda':'Compra')+(x.cat==='DEVOL'?' (devolução)':''),i.cp.nome,fmtDoc(i.cp.doc),x.tipo,x.it.cfop,CATS[x.cat].nome,x.it.ncm,x.it.xProd,CLASSES[x.cls].curto,x.it.vOper,x.it.icms,x.legPc,x.vNet]); }
+  csv('Simulacao_Reforma_'+(sel[0]?.doc||'produtor')+'.csv',L);
+}
+
+/* ===================== eventos ===================== */
+function abrirTab(t){S.tab=t; $$('.tab').forEach(b=>b.classList.toggle('on',b.dataset.tab===t)); $$('[data-view]').forEach(v=>v.classList.toggle('hidden',v.dataset.view!==t));
+  if(t==='geral') renderGeral(); if(t==='vendas') renderVendas(); if(t==='compras') renderCompras();}
+$$('.tab').forEach(b=>b.onclick=()=>abrirTab(b.dataset.tab));
+$('#segUnid').onclick=e=>{const b=e.target.closest('button'); if(!b) return; S.unid=b.dataset.u; renderProj();};
+$('#qNcm').oninput=renderClass; $('#fDiv').onchange=renderClass; $('#fOv').onchange=renderClass;
+$('#btnResetNcm').onclick=()=>{ if(confirm('Remover todas as suas decisões de classificação por NCM?')){S.ovNcm={};salvar();recompor();} };
+$('#qDoc').oninput=()=>{S.pgDoc=0;renderDocs()}; $('#fDir').onchange=()=>{S.pgDoc=0;renderDocs()};
+$('#btnCsv').onclick=exportarProj; $('#btnPrint').onclick=()=>window.print();
+const fi=$('#file'), fo=$('#folder');
+$('#btnAdd').onclick=()=>fi.click(); $('#btnPick').onclick=()=>fi.click(); $('#btnPickDir').onclick=()=>fo.click();
+fi.onchange=()=>{carregar([...fi.files].map(f=>({name:f.name,file:f}))); fi.value='';};
+fo.onchange=()=>{carregar([...fo.files].map(f=>({name:f.webkitRelativePath||f.name,file:f}))); fo.value='';};
+const drop=$('#drop');
+['dragenter','dragover'].forEach(ev=>document.addEventListener(ev,e=>{e.preventDefault(); drop.classList.add('over');}));
+['dragleave','drop'].forEach(ev=>document.addEventListener(ev,e=>{e.preventDefault(); if(ev==='dragleave'&&e.relatedTarget) return; drop.classList.remove('over');}));
+document.addEventListener('drop',async e=>{ const fs=await entradasDeDrop(e.dataTransfer); if(fs.length) carregar(fs); });
+$('#btnTheme').onclick=()=>{const r=document.documentElement, dark=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;
+  r.dataset.theme=dark?'light':'dark'; try{localStorage.setItem('agritax-theme',r.dataset.theme)}catch(e){} if(S.res) renderTudo();};
+try{const t=localStorage.getItem('agritax-theme'); if(t) document.documentElement.dataset.theme=t;}catch(e){}
+let rz; addEventListener('resize',()=>{clearTimeout(rz); rz=setTimeout(()=>{if(S.res){renderGeral();renderVendas();}},150)});
+</script>
+</body>
+</html>
