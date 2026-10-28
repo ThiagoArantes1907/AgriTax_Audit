@@ -20,6 +20,10 @@ extra = r'''
 .pchk.on{border-color:var(--brand);background:var(--surface-2)}
 .pchk input{margin-top:2px;accent-color:var(--brand)}
 .mais{width:100%}
+.pbtn{border:0;background:none;padding:0;text-align:left;cursor:pointer;display:flex;flex-direction:column;line-height:1.25;color:inherit;min-width:0}
+.pbtn:hover b{text-decoration:underline}
+tr.atual td{background:color-mix(in srgb,var(--lime) 12%,transparent)}
+.tab .badge.info{background:var(--surface-3);color:var(--ink-2)}
 .mais summary{cursor:pointer;font-size:12px;color:var(--brand);margin:2px 0}
 .mais .prods{margin-top:6px}
 .kpi .v .st{font-size:13px;vertical-align:middle}
@@ -43,7 +47,7 @@ table.proj tr.dif td{font-weight:700;color:var(--char)}
 table.proj tr.sub2 td{color:var(--muted);font-size:11.5px}
 table.proj tr.aliq td{color:var(--ink-2);font-size:11.5px}
 .tbl-wrap.tall{max-height:560px}
-td.mono,.mono{font-family:ui-monospace,Consolas,monospace;font-size:12px}
+td.mono,.mono{font-family:ui-monospace,Consolas,monospace;font-size:12px;white-space:nowrap}
 tr.divg td{background:color-mix(in srgb,var(--warn) 9%,transparent)}
 .tag-w{background:color-mix(in srgb,var(--warn) 25%,transparent)!important;color:var(--ink)!important}
 .tag.t-s{background:color-mix(in srgb,var(--s1) 18%,transparent);color:var(--good-ink)}

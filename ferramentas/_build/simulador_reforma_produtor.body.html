@@ -46,6 +46,7 @@
     </div>
 
     <nav class="tabs" id="tabs">
+      <button class="tab hidden" data-tab="lote" id="tabLote">Produtores do lote <span class="badge info" id="badgeLote"></span></button>
       <button class="tab on" data-tab="geral">Simulação 2026–2033</button>
       <button class="tab" data-tab="vendas">Vendas</button>
       <button class="tab" data-tab="compras">Compras e créditos</button>
@@ -55,6 +56,14 @@
       <button class="tab" data-tab="metodo">Método e base legal</button>
     </nav>
 
+    <section data-view="lote" class="hidden">
+      <div class="card">
+        <h2>Produtores identificados no lote</h2>
+        <p class="sub">Cada linha é uma simulação independente, com o seu próprio teste de limite. Os valores seguem os parâmetros atuais.</p>
+        <div class="tbl-wrap"><table id="tblLote"></table></div>
+        <p class="note" id="loteNote"></p>
+      </div>
+    </section>
     <section data-view="geral">
       <div class="kpis" id="kpis"></div>
       <div class="card mt verdict" id="leitura"></div>
@@ -314,8 +323,8 @@ const S={docs:new Map(),cancel:new Set(),arquivos:{xml:0,zip:0,rar:0,evento:0,ig
   sel:new Set(),params:Object.assign({},DEF,st.params||{}),ovNcm:{},ovCfop:{},
   itens:[],res:null,unid:'r',tab:'geral',pgDoc:0};
 // parâmetros e seleção: globais; decisões de classificação: por produtor (não vazam entre clientes)
-const chaveProd=()=>LS_KEY+':'+[...S.sel].sort().join('+');
-function salvar(){lsSet({params:S.params,sel:[...S.sel]}); lsSet({ovNcm:S.ovNcm,ovCfop:S.ovCfop},chaveProd());}
+const chaveProd=()=>LS_KEY+':'+[...S.unid].sort().join('+');
+function salvar(){lsSet({params:S.params,unid:S.unid}); lsSet({ovNcm:S.ovNcm,ovCfop:S.ovCfop},chaveProd());}
 function carregarDecisoes(){const o=lsGet(chaveProd()); S.ovNcm=o.ovNcm||{}; S.ovCfop=o.ovCfop||{};}
 
 /* ===================== leitura de arquivos ===================== */
@@ -483,28 +492,67 @@ async function entradasDeDrop(dt){
 
 /* ===================== produtor(es) e operações ===================== */
 function validos(){ return [...S.docs.values()].filter(d=>(!d.cStat||d.cStat==='100'||d.cStat==='150')&&!S.cancel.has(d.ch)); }
+// entidade = CPF ou raiz do CNPJ (filiais da mesma PJ são um só contribuinte para o limite do art. 164)
+const entKey=doc=>!doc?'':doc.length===14?doc.slice(0,8):doc;
+const fmtEnt=k=>k.length===8?k.replace(/(\d{2})(\d{3})(\d{3})/,'$1.$2.$3')+'/…':fmtDoc(k);
 function detectarProdutores(){
-  const m=new Map();
-  for(const d of validos()) for(const [lado,p] of [['e',d.emit],['d',d.dest]]){
-    if(!p.doc) continue; let o=m.get(p.doc); if(!o){o={doc:p.doc,nome:p.nome,ne:0,nd:0};m.set(p.doc,o)}
-    if(lado==='e') o.ne++; else o.nd++;
+  const ents=new Map(), notas=[];
+  for(const d of validos()){
+    const ks=[];
+    for(const [lado,p] of [['e',d.emit],['d',d.dest]]){
+      const k=entKey(p.doc); if(!k) continue; ks.push(k);
+      let o=ents.get(k); if(!o){o={key:k,tipo:k.length===11?'PF':'PJ',nomes:{},docs:new Set(),ne:0,nd:0};ents.set(k,o)}
+      o.docs.add(p.doc); o.nomes[p.nome]=(o.nomes[p.nome]||0)+1; if(lado==='e') o.ne++; else o.nd++;
+    }
+    notas.push(ks);
   }
-  S.cands=[...m.values()].sort((a,b)=>(b.ne+b.nd)-(a.ne+a.nd)).slice(0,12);
-  const salvos=(lsGet().sel||[]).filter(x=>m.has(x));
-  S.sel=new Set(salvos.length?salvos:S.cands.length?[S.cands[0].doc]:[]); carregarDecisoes();
+  for(const o of ents.values()) o.nome=Object.entries(o.nomes).sort((a,b)=>b[1]-a[1])[0][0];
+  // donos do lote: cobertura gulosa — quem está no maior nº de notas ainda não cobertas, até cobrir o lote.
+  // Contrapartes (frigorífico, fornecedor) só aparecem se tiverem notas que nenhum dono cobre.
+  let resto=notas.map((_,i)=>i); const prods=[];
+  while(resto.length&&prods.length<25){
+    const c=new Map(); for(const i of resto) for(const k of new Set(notas[i])) c.set(k,(c.get(k)||0)+1);
+    const top=[...c.entries()].sort((a,b)=>b[1]-a[1])[0];
+    if(!top||top[1]<3) break; // notas que sobram não envolvem nenhum dono já achado: pertencem a outro dono do lote
+    prods.push({key:top[0],cobre:top[1]}); resto=resto.filter(i=>!notas[i].includes(top[0]));
+  }
+  S.ents=ents; S.produtores=prods.map(p=>Object.assign(ents.get(p.key),{cobre:p.cobre})); S.semDono=resto.length;
+  S.cands=[...ents.values()].filter(o=>!prods.some(p=>p.key===o.key)).sort((a,b)=>(b.ne+b.nd)-(a.ne+a.nd)).slice(0,15);
+  // situação de cada produtor do lote no art. 164 vale também quando ele é contraparte de outro:
+  // PF acima do limite = contribuinte (gera/aproveita crédito); PJ abaixo do limite = não contribuinte
+  S.contribConhecidos=new Set(); S.naoContrib=new Set();
+  if(S.produtores.length>1) for(const u of S.produtores){
+    const acima=!situacaoLimite(simularPara([u.key]).res).A;
+    for(const d of u.docs) (acima?S.contribConhecidos:S.naoContrib).add(d);
+  }
+  const salvos=(lsGet().unid||[]).filter(k=>ents.has(k));
+  definirUnidade(salvos.length?salvos:S.produtores.length?[S.produtores[0].key]:[]);
+}
+function definirUnidade(keys){
+  S.unid=keys; S.sel=new Set(); for(const k of keys) for(const d of S.ents.get(k).docs) S.sel.add(d);
+  carregarDecisoes();
+}
+// roda a simulação de outra unidade sem mexer na tela
+function simularPara(keys){
+  const bk={}; for(const k of ['unid','sel','ovNcm','ovCfop','todosItens','itens','docInfo','res','meses','span','fator','periodo']) bk[k]=S[k];
+  if(!S.contribConhecidos){ S.contribConhecidos=new Set(); S.naoContrib=new Set(); }
+  definirUnidade(keys); construirItens(); filtrarPeriodo(); calcular();
+  const out={res:S.res,periodo:S.periodo,fator:S.fator,meses:S.meses.length,span:S.span,lim:situacaoLimite(S.res)};
+  Object.assign(S,bk); return out;
 }
 function construirItens(){
   const its=[], sel=S.sel; S.docInfo=new Map();
   for(const d of validos()){
     const eE=sel.has(d.emit.doc), eD=sel.has(d.dest.doc);
-    if(!eE&&!eD){S.docInfo.set(d.ch,{dir:'X',motivo:'não envolve o produtor'});continue}
+    if(!eE&&!eD){S.docInfo.set(d.ch,{dir:'X',motivo:'outro produtor / terceiros'});continue}
     if(eE&&eD){S.docInfo.set(d.ch,{dir:'X',motivo:'operação interna do grupo'});continue}
     const saida=(eE&&d.tpNF==='1')||(eD&&d.tpNF==='0');
     const dir=saida?'S':'E';
     const cp=eE?d.dest:d.emit; const cpEmit=!eE;
     // tipo da contraparte conforme o papel: comprador (PJ/PF/EXT) ou fornecedor (NORMAL/SIMPLES/PF/EXT)
-    const tipoV=cp.ext?'EXT':cp.doc.length===14?'PJ':'PF';
-    const tipoC=cp.ext?'EXT':cp.doc.length===11?'PF':(cpEmit&&['1','2','4'].includes(d.emit.crt))?'SIMPLES':'NORMAL';
+    const contrib=S.contribConhecidos.has(cp.doc), naoC=S.naoContrib.has(cp.doc); // situação no lote (art. 164)
+    const tipoV=cp.ext?'EXT':naoC?'PF':cp.doc.length===14||contrib?'PJ':'PF';
+    const tipoC=cp.ext?'EXT':naoC?'PF':contrib?'NORMAL':cp.doc.length===11?'PF':(cpEmit&&['1','2','4'].includes(d.emit.crt))?'SIMPLES':'NORMAL';
     S.docInfo.set(d.ch,{dir,cp,tipo:saida?tipoV:tipoC});
     for(const it of d.itens){
       let cat=S.ovCfop[it.cfop]||catCFOP(it.cfop);
@@ -627,24 +675,24 @@ function taxaCompra(x,al,cen,B){
 function iniciarApp(){
   $('#welcome').classList.add('hidden'); $('#app').classList.remove('hidden');
   $('#btnCsv').classList.remove('hidden'); $('#btnPrint').classList.remove('hidden');
-  recompor();
+  recompor(); if(S.produtores.length>1) abrirTab('lote');
 }
 function recompor(){ construirItens(); filtrarPeriodo(); calcular(); renderTudo(); }
 function recalcular(){ filtrarPeriodo(); calcular(); renderTudo(); }
-function renderTudo(){ renderId(); renderGeral(); renderVendas(); renderCompras(); renderClass(); renderParam(); renderDocs(); renderMetodo(); }
+function renderTudo(){ renderLote(); renderId(); renderGeral(); renderVendas(); renderCompras(); renderClass(); renderParam(); renderDocs(); renderMetodo(); }
 
-function situacaoLimite(){
-  const r=S.res.base.vendas, L=S.params.limite;
+function situacaoLimite(res=S.res){
+  const r=res.base.vendas, L=S.params.limite;
   if(r<L) return {cls:'ok',txt:'Abaixo do limite',det:'Pode permanecer não contribuinte (art. 164) ou optar pelo regime regular (art. 165).',A:true};
   if(r<=L*1.2) return {cls:'warn',txt:'Acima do limite (até 20%)',det:'Excesso de até 20%: passa a contribuinte no ano-calendário seguinte (art. 164, § 3º).',A:false};
   return {cls:'crit',txt:'Acima do limite (> 20%)',det:'Contribuinte a partir do 2º mês seguinte ao excesso (art. 164, § 2º). Cenário A só para comparação.',A:false};
 }
 function renderId(){
-  const sel=[...S.sel], nomes=S.cands.filter(c=>S.sel.has(c.doc));
-  const tipo=sel.every(d=>d.length===11)?'Pessoa física':sel.every(d=>d.length===14)?'Pessoa jurídica':'Grupo PF + PJ';
+  const us=S.unid.map(k=>S.ents.get(k)), sel=[...S.sel];
+  const tipo=us.every(u=>u.tipo==='PF')?'Pessoa física':us.every(u=>u.tipo==='PJ')?'Pessoa jurídica':'Grupo PF + PJ';
   const lim=situacaoLimite();
-  $('#who').innerHTML=`<h2>${esc(nomes.map(n=>n.nome).join(' + ')||'Selecione o produtor')}</h2>
-   <div class="meta"><span>${sel.map(fmtDoc).join(' · ')}</span><span class="pill">${tipo}</span>
+  $('#who').innerHTML=`<h2>${esc(us.map(u=>u.nome).join(' + ')||'Selecione o produtor')}</h2>
+   <div class="meta"><span title="${sel.map(fmtDoc).join(', ')}">${us.map(u=>fmtEnt(u.key)).join(' · ')}${sel.length>us.length?` (${sel.length} estabelecimentos)`:''}</span><span class="pill">${tipo}${us.length>1?' · agrupado':''}</span>
    <span class="st ${lim.cls}">${lim.txt}</span><span>Receita base anual: <b>${R(S.res.base.vendas)}</b></span></div>`;
   const anos=[...new Set(S.todosItens.map(x=>x.ano))].sort();
   const p=S.params;
@@ -653,15 +701,40 @@ function renderId(){
     <span class="filter-note">${S.meses.length} ${S.meses.length===1?'mês':'meses'} com notas em ${S.span}${S.meses.length<S.span?' (há meses sem nota — confira se o acervo está completo)':''}${S.meses.length?' ('+ymLabel(S.meses[0])+' a '+ymLabel(S.meses[S.meses.length-1])+')':''} · fator ${nf2.format(S.fator)}</span>`;
   $('#selPer').onchange=e=>{p.periodo=e.target.value;salvar();recalcular()};
   $('#chkAnu').onchange=e=>{p.anualizar=e.target.checked;salvar();recalcular()};
-  const pc=c=>`<label class="pchk ${S.sel.has(c.doc)?'on':''}"><input type="checkbox" data-doc="${c.doc}" ${S.sel.has(c.doc)?'checked':''}>
-      <b>${esc(c.nome||'(sem nome)')}</b><span>${fmtDoc(c.doc)} · ${nf0.format(c.ne)} emitidas · ${nf0.format(c.nd)} recebidas</span></label>`;
-  const vis=S.cands.filter((c,i)=>i<6||S.sel.has(c.doc)), mais=S.cands.filter(c=>!vis.includes(c));
-  $('#prods').innerHTML=`<span class="filter-note">Produtor(es) analisado(s) — marque mais de um para somar as receitas (art. 164, § 6º):</span>`+
-    vis.map(pc).join('')+(mais.length?`<details class="mais"><summary>mais ${mais.length}</summary><div class="prods">${mais.map(pc).join('')}</div></details>`:'');
-  $$('#prods input').forEach(i=>i.onchange=()=>{ if(i.checked) S.sel.add(i.dataset.doc); else S.sel.delete(i.dataset.doc);
-    carregarDecisoes(); salvar(); recompor(); });
+  const on=k=>S.unid.includes(k);
+  const pc=c=>`<div class="pchk ${on(c.key)?'on':''}"><input type="checkbox" title="Somar a este grupo (art. 164, § 6º)" data-k="${c.key}" ${on(c.key)?'checked':''}>
+      <button class="pbtn" data-so="${c.key}" title="Analisar só este produtor"><b>${esc(c.nome||'(sem nome)')}</b><span>${c.tipo} · ${fmtEnt(c.key)} · ${nf0.format(c.ne+c.nd)} notas</span></button></div>`;
+  const outros=S.cands.filter(c=>!on(c.key)), extras=S.cands.filter(c=>on(c.key));
+  $('#prods').innerHTML=`<span class="filter-note">${S.produtores.length>1?`<b>${S.produtores.length} produtores identificados neste lote</b> — cada um é analisado separadamente. Clique no nome para trocar; marque a caixa para somar ao grupo (art. 164, § 6º).`:'Produtor identificado no lote. Marque outros participantes para somar receitas (art. 164, § 6º).'}</span>`+
+    S.produtores.map(pc).join('')+extras.map(pc).join('')+
+    (outros.length?`<details class="mais"><summary>outros participantes das notas (${outros.length}) — use se o produtor não foi identificado</summary><div class="prods">${outros.map(pc).join('')}</div></details>`:'');
+  $$('#prods input').forEach(i=>i.onchange=()=>{ const k=i.dataset.k;
+    const nova=i.checked?[...S.unid,k]:S.unid.filter(x=>x!==k); if(!nova.length){i.checked=true;return}
+    definirUnidade(nova); salvar(); recompor(); });
+  $$('#prods [data-so]').forEach(b=>b.onclick=()=>{ definirUnidade([b.dataset.so]); salvar(); recompor(); });
 }
 
+function renderLote(){
+  const multi=S.produtores.length>1||S.unid.length>1;
+  $('#tabLote').classList.toggle('hidden',!multi); if(!multi) return;
+  const linhas=S.produtores.map(u=>({u,r:simularPara([u.key])}));
+  const a33=r=>r.res.anos[r.res.anos.length-1];
+  $('#badgeLote').textContent=S.produtores.length;
+  $('#tblLote').innerHTML=`<thead><tr><th>Produtor</th><th>CPF / CNPJ (raiz)</th><th class="r">Notas</th><th>Ano-base</th><th class="r">Receita anual</th><th>Art. 164</th><th class="r">Equilíbrio crédito presumido</th><th class="r">Cadeia 2033 · A</th><th class="r">Cadeia 2033 · B</th><th></th></tr></thead><tbody>`+
+    linhas.map(({u,r})=>`<tr class="${S.unid.length===1&&S.unid[0]===u.key?'atual':''}"><td><b>${esc(u.nome)}</b><br><small class="muted">${u.tipo}${u.docs.size>1?' · '+u.docs.size+' estabelecimentos':''}</small></td>
+      <td class="mono">${fmtEnt(u.key)}</td><td class="v">${nf0.format(u.ne+u.nd)}</td><td>${r.periodo==='todos'?'todos':r.periodo}${r.fator!==1?` <small class="muted">×${nf2.format(r.fator)}</small>`:''}</td>
+      <td class="v">${n2(r.res.base.vendas)}</td><td><span class="st ${r.lim.cls}">${r.lim.txt}</span></td>
+      <td class="v">${fmtEq(r.res.base.equilibrio)}</td>
+      <td class="v ${r.lim.A?'':'muted'}">${n2(a33(r).A.cadeia)}</td><td class="v">${n2(a33(r).B.cadeia)}</td>
+      <td><button class="btn" data-ab="${u.key}">Analisar</button></td></tr>`).join('')+'</tbody>';
+  $$('#tblLote [data-ab]').forEach(b=>b.onclick=()=>{definirUnidade([b.dataset.ab]);salvar();recompor();abrirTab('geral');window.scrollTo(0,0)});
+  $('#loteNote').innerHTML=`Identificação automática: cada produtor é o CPF ou a raiz de CNPJ presente no maior número de notas do lote, repetindo até cobrir todas as notas. Frigoríficos, tradings e fornecedores ficam como contraparte.`+
+    (S.semDono?` <b>${nf0.format(S.semDono)} nota(s)</b> não pertencem a nenhum produtor identificado (notas avulsas de terceiros) e ficam fora.`:'')+
+    ` Para somar produtores do mesmo grupo econômico (art. 164, § 6º), marque as caixas no cabeçalho.`+
+    (S.contribConhecidos.size||S.naoContrib.size?` Quando um produtor do lote compra ou vende para outro, vale a situação dele no art. 164: acima do limite é <b>contribuinte</b> (mesmo PF), abaixo é <b>não contribuinte</b> (mesmo PJ).`:'');
+}
+const n2=v=>nf2.format(Math.abs(v)<0.005?0:v);
+const fmtEq=e=>e==null?'—':e<-0.005?'A sempre melhor':PC(Math.max(0,e));
 function kpi(k,v,d,cor){return `<div class="kpi" ${cor?`style="border-top-color:${cor}"`:''}><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d||''}</div></div>`}
 function renderGeral(){
   const {base:B,anos}=S.res, a33=anos[anos.length-1], a26=anos[0], lim=situacaoLimite();
@@ -669,7 +742,7 @@ function renderGeral(){
   const difAc=acum(a=>a.dif);
   $('#kpis').innerHTML=
     kpi('Receita bruta (base anual)',RC(B.vendas),`${PC(100*B.shareContrib)} para PJ · ${PC(B.vendas?100*B.vendasExp/B.vendas:0)} exportação`)+
-    kpi('Crédito presumido de equilíbrio',B.equilibrio==null?'—':PC(B.equilibrio),`acima disso, ser não contribuinte é melhor · em uso: ${PC(B.cpCBS+B.cpIBS)}`,'var(--s3)')+
+    kpi('Crédito presumido de equilíbrio',fmtEq(B.equilibrio),B.equilibrio!=null&&B.equilibrio<0?'A é melhor com qualquer crédito presumido, até zero':`acima disso, ser não contribuinte é melhor · em uso: ${PC(B.cpCBS+B.cpIBS)}`,'var(--s3)')+
     kpi('Limite art. 164',`<span class="st ${lim.cls}">${lim.txt}</span>`,`${PC(100*B.vendas/S.params.limite)} de ${RC(S.params.limite)}`)+
     kpi('Custo na cadeia 2033 · A',RC(a33.A.cadeia),`${PC(B.vendas?100*a33.A.cadeia/B.vendas:0)} da receita · não contribuinte`,'var(--s2)')+
     kpi('Custo na cadeia 2033 · B',RC(a33.B.cadeia),`${PC(B.vendas?100*a33.B.cadeia/B.vendas:0)} da receita · regime regular`,'var(--s1)')+
@@ -678,7 +751,8 @@ function renderGeral(){
   // leitura
   const pct=v=>PC(B.vendas?100*v/B.vendas:0);
   const fat=[];
-  if(B.equilibrio!=null) fat.push(`<li><b>Ponto de equilíbrio:</b> se o percentual oficial de crédito presumido (art. 168, § 4º) para os produtos vendidos ficar <b>acima de ${PC(B.equilibrio)}</b> do valor da venda, permanecer não contribuinte é mais eficiente na cadeia. Abaixo disso, o regime regular é melhor.${S.params.cpModo==='auto'?' Com o percentual estimado pelas próprias compras, o cenário A fica perto da neutralidade por construção — use o equilíbrio como referência principal.':''}</li>`);
+  if(B.equilibrio!=null&&B.equilibrio<0) fat.push(`<li><b>Ponto de equilíbrio negativo (${PC(B.equilibrio)}):</b> mesmo sem crédito presumido, o cenário A custa menos na cadeia — o regime regular só pesa, porque ${RC(S.res.anos[7].B.debNC)} de débito recairiam sobre compradores sem crédito.</li>`);
+  else if(B.equilibrio!=null) fat.push(`<li><b>Ponto de equilíbrio:</b> se o percentual oficial de crédito presumido (art. 168, § 4º) para os produtos vendidos ficar <b>acima de ${PC(B.equilibrio)}</b> do valor da venda, permanecer não contribuinte é mais eficiente na cadeia. Abaixo disso, o regime regular é melhor.${S.params.cpModo==='auto'?' Com o percentual estimado pelas próprias compras, o cenário A fica perto da neutralidade por construção — use o equilíbrio como referência principal.':''}</li>`);
   if(B.ativoVenda) fat.push(`<li><b>Venda de bens do ativo:</b> ${RC(B.ativoVenda)} (máquinas e veículos) ficaram fora da receita do limite. No regime regular são tributadas, e o débito está incluído.</li>`);
   fat.push(`<li><b>Crédito presumido que o comprador teria (A):</b> ${RC(a33.A.cp)}/ano em 2033 (${PC(B.cpCBS+B.cpIBS)} sobre as vendas a PJ${S.params.cpModo==='auto'?', estimado pela carga das próprias compras':', informado manualmente'}).</li>`);
   fat.push(`<li><b>IBS/CBS embutido nas compras sem crédito (A):</b> ${RC(a33.A.novoC)}/ano. No regime regular esse valor vira crédito: ${RC(a33.B.cred)}.</li>`);
@@ -908,6 +982,7 @@ function renderMetodo(){
 <ul><li><b>Venda do produtor:</b> nota emitida por ele (tpNF=1) ou <b>nota de entrada emitida pelo comprador</b> com o produtor como destinatário (tpNF=0) — o caso comum da compra de gado e grãos de produtor PF.</li>
 <li><b>Compra do produtor:</b> nota de terceiro destinada a ele (tpNF=1), ou nota de entrada que ele mesmo emitiu.</li>
 <li>Venda de máquinas, equipamentos e veículos (capítulos 84, 85, 87 e 89, ou NCM 00000000) pelo produtor é tratada como alienação de ativo: fora da receita do limite do art. 164, tributada no regime regular.</li>
+<li><b>Lote com vários produtores:</b> cada produtor é identificado pelo CPF ou pela raiz do CNPJ (filiais somadas) e simulado separadamente. Quando um produtor do lote negocia com outro, vale a situação dele no art. 164: acima do limite é contribuinte (mesmo PF), abaixo é não contribuinte (mesmo PJ). Fora do lote, CNPJ é presumido contribuinte e CPF não contribuinte.</li>
 <li>O CFOP define a natureza (venda, devolução, remessa, transferência, exportação). Remessas, transferências e CFOP 5929/6929 ficam fora; "Outras" (x949, x910) fica fora até você decidir.</li></ul>
 <h3>2. Base de cálculo</h3>
 <p>Premissa de <b>preço líquido constante</b>: o valor da operação sem os tributos "por dentro" (ICMS e PIS/COFINS) é mantido, e o IBS/CBS incide "por fora" sobre ele. Os tributos legados destacados nas notas viram o ponto de partida e diminuem conforme o calendário da transição.</p>
@@ -980,8 +1055,8 @@ function csv(nome,linhas){
   setTimeout(()=>URL.revokeObjectURL(a.href),2000);
 }
 function exportarProj(){
-  const {anos,base:B}=S.res, sel=S.cands.filter(c=>S.sel.has(c.doc));
-  const L=[['Simulação da Reforma Tributária — '+sel.map(c=>c.nome+' ('+fmtDoc(c.doc)+')').join(' + ')],
+  const {anos,base:B}=S.res, sel=S.unid.map(k=>Object.assign({},S.ents.get(k),{doc:k}));
+  const L=[['Simulação da Reforma Tributária — '+sel.map(c=>c.nome+' ('+fmtEnt(c.doc)+')').join(' + ')],
     ['Receita base anual',B.vendas],['Compras base anual',B.compras],['CBS ref.',S.params.cbs],['IBS ref.',S.params.ibs],['Crédito presumido (CBS+IBS) %',B.cpCBS+B.cpIBS],[],
     ['Componente',...anos.map(a=>String(a.ano))]];
   const add=(r,f)=>L.push([r,...anos.map(f)]);
