@@ -1,0 +1,350 @@
+<body>
+<header class="top">
+  <div class="top-in">
+    <img class="logo logo-l" alt="AgriTax Tributário & Contábil" src="%%LOGO_L%%"><img class="logo logo-d" alt="AgriTax Tributário & Contábil" src="%%LOGO_D%%"><span class="sep"></span>
+    <h1>Calculadora da Reforma Tributária<small>Produtor rural: informe os valores e veja IBS/CBS de 2026 a 2033 (LC 214/2025)</small></h1>
+    <div class="spacer"></div>
+    <select id="exemplo" class="btn" title="Carregar um exemplo">
+      <option value="">Carregar exemplo…</option>
+      <option value="pequeno">PF dona da terra, R$ 2 mi</option>
+      <option value="arrendatario">PF arrendatária, R$ 8 mi</option>
+      <option value="parceria">PF em parceria e arrendadora</option>
+      <option value="holding">PJ holding arrendadora</option>
+      <option value="integrado">Integrado + condomínio</option>
+    </select>
+    <button class="btn" id="btnLimpar">Limpar</button>
+    <button class="btn" id="btnCsv">Projeção CSV</button>
+    <button class="btn" id="btnPrint">Imprimir / PDF</button>
+    <button class="btn icon-btn" id="btnTheme" title="Alternar tema claro/escuro">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+  </div>
+</header>
+
+<main>
+  <div class="cols">
+    <div class="col-in">
+      <div class="card">
+        <h2>1. Quem é o produtor</h2><p class="sub">Os valores ficam só neste navegador; nada é enviado para a internet.</p>
+        <div class="form">
+          <label class="fl"><span><b>Nome (opcional)</b></span><input id="nome" class="txt" type="text" maxlength="80"></label>
+          <label class="fl"><span><b>Natureza</b></span><select id="nat"><option value="PF">Pessoa física (CPF)</option><option value="PJ">Pessoa jurídica (CNPJ)</option></select></label>
+          <label class="fl"><span><b>Receita de outras PJ agropecuárias</b><small>Em que o produtor tem participação societária. Soma no limite (art. 164, § 6º).</small></span><span class="inp">R$<input id="outrasPJ" type="number" min="0" step="any"></span></label>
+        </div>
+      </div>
+
+      <div class="card mt">
+        <h2>2. Atividades rurais e vendas</h2><p class="sub">Uma linha para cada forma de exploração e tipo de produto. Valores por ano, a preços de hoje.</p>
+        <div id="ativs"></div>
+        <button class="btn" id="btnAddAtiv">+ Adicionar atividade</button>
+      </div>
+
+      <div class="card mt">
+        <h2>3. Arrendamento de terra</h2><p class="sub">Preencha o que se aplica. Pagamento em produto: informe o valor de mercado.</p>
+        <div class="form">
+          <h3 class="h3">Recebo arrendamento (sou o dono da terra)</h3>
+          <label class="fl"><span><b>Valor recebido por ano</b></span><span class="inp">R$<input id="arrRec" type="number" min="0" step="any"></span></label>
+          <label class="fl"><span><b>Número de imóveis arrendados</b><small>Pessoa física só é contribuinte com mais de 3 e mais de R$ 240 mil (art. 251, § 1º).</small></span><span class="inp"><input id="arrIm" type="number" min="0" step="1"></span></label>
+          <label class="fl"><span><b>Arrendatários que aproveitam crédito</b><small>Contribuintes do regime regular.</small></span><span class="inp"><input id="arrCont" type="number" min="0" max="100" step="any">%</span></label>
+          <label class="fl chk"><input id="arr487" type="checkbox"><span><b>Contrato antigo, com opção pelos 3,65% sobre a receita (art. 487)</b><small>Prazo determinado, firmado até a publicação da LC 214 (janeiro de 2025) e registrado até 31/12/2025 ou informado à RFB e ao Comitê Gestor. Sem direito a crédito nas compras ligadas ao imóvel.</small></span></label>
+          <h3 class="h3">Pago arrendamento (sou o arrendatário)</h3>
+          <label class="fl"><span><b>Valor pago por ano</b></span><span class="inp">R$<input id="arrPag" type="number" min="0" step="any"></span></label>
+          <label class="fl"><span><b>O dono da terra cobra IBS/CBS?</b></span><select id="arrPagCob"><option value="nao">Não (PF abaixo dos limites do art. 251)</option><option value="sim">Sim (PJ ou PF contribuinte)</option></select></label>
+        </div>
+      </div>
+
+      <div class="card mt">
+        <h2>4. Compras e despesas da atividade</h2><p class="sub">Valores por ano. "Embutido hoje" é o PIS/COFINS e o ICMS que já estão no preço; eles saem com a reforma. Sem folha de pagamento.</p>
+        <div class="tbl-wrap"><table class="compras"><thead><tr><th>Grupo</th><th class="v">Valor (R$/ano)</th><th class="v">PIS/COFINS embutido</th><th class="v">ICMS embutido</th></tr></thead><tbody id="tbCompras"></tbody></table></div>
+      </div>
+
+      <details class="card mt">
+        <summary><b>5. Premissas</b> <span class="muted">alíquotas e crédito presumido</span></summary>
+        <div class="form mt">
+          <label class="fl"><span><b>CBS de referência</b><small>TCU, 28/10/2026: 11,3% para 2027. Pendente de resolução do Senado até 15/12/2026.</small></span><span class="inp"><input id="cbs" type="number" step="any">%</span></label>
+          <label class="fl"><span><b>IBS de referência</b><small>Sem número oficial. 17,7% é a projeção da Fazenda; o Comitê Gestor usa 18,7%.</small></span><span class="inp"><input id="ibs" type="number" step="any">%</span></label>
+          <label class="fl"><span><b>Crédito presumido ao comprador (art. 168)</b><small>O percentual oficial ainda não foi publicado. "Estimar" usa a carga das compras deste produtor.</small></span><select id="cpModo"><option value="auto">Estimar</option><option value="manual">Informar</option></select></label>
+          <label class="fl" id="cpLinha"><span><b>Percentual sobre as vendas, regime pleno</b></span><span class="inp"><input id="cpPct" type="number" min="0" step="any">%</span></label>
+          <label class="fl"><span><b>Crédito de fornecedor do Simples</b><small>Parcela de IBS/CBS que vem na nota, em regime pleno.</small></span><span class="inp"><input id="credSimples" type="number" min="0" step="any">%</span></label>
+          <label class="fl"><span><b>Combustíveis: redução equivalente</b><small>Regime específico por litro, ainda sem valores (arts. 172 a 180).</small></span><span class="inp"><input id="combRed" type="number" min="0" max="100" step="any">%</span></label>
+          <label class="fl"><span><b>Tributos embutidos nas vendas hoje</b><small>ICMS e PIS/COFINS no preço de venda. Saem da base do IBS/CBS.</small></span><span class="inp"><input id="tv" type="number" min="0" max="100" step="any">%</span></label>
+          <label class="fl chk"><input id="arrNoLimite" type="checkbox"><span><b>Somar o arrendamento recebido no limite de R$ 3,6 mi</b><small>A lei não define se essa receita conta. Desligado por padrão.</small></span></label>
+        </div>
+      </details>
+    </div>
+
+    <div class="col-out" id="saida"></div>
+  </div>
+</main>
+
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const nf0=new Intl.NumberFormat('pt-BR',{maximumFractionDigits:0}), nf2=new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const zero=v=>Math.abs(v)<0.5?0:v;
+const RC=v=>'R$ '+nf0.format(zero(v)), N0=v=>nf0.format(zero(v)), PC=v=>nf2.format(v)+'%';
+const LS_KEY='agritax-calcrt-v1';
+
+/* ===================== regras ===================== */
+const LIMITE=3600000, LIM_ARR=240000;
+const ANOS=[2026,2027,2028,2029,2030,2031,2032,2033];
+const LEG={2026:{pc:1,icms:1},2027:{pc:0,icms:1},2028:{pc:0,icms:1},2029:{pc:0,icms:.9},2030:{pc:0,icms:.8},2031:{pc:0,icms:.7},2032:{pc:0,icms:.6},2033:{pc:0,icms:0}};
+const FIBS={2029:.1,2030:.2,2031:.3,2032:.4};
+function aliq(ano,p){ // alíquotas cheias, em %
+  if(ano<=2026) return {cbs:0,ibs:0,teste:true};
+  if(ano<=2028) return {cbs:Math.max(0,p.cbs-0.1),ibs:0.1};
+  return {cbs:p.cbs,ibs:p.ibs*(FIBS[ano]??1)};
+}
+const FORMAS={
+  propria:{nome:'Produção própria (terra própria ou comodato)',cota:false,firme:true,base:'Art. 164'},
+  arrendatario:{nome:'Produção em terra arrendada (sou arrendatário)',cota:false,firme:true,base:'Art. 164'},
+  outorgado:{nome:'Parceria: sou parceiro outorgado (toco a lavoura)',cota:true,cotaPad:70,firme:false,base:'Sem regra específica'},
+  outorgante:{nome:'Parceria: sou parceiro outorgante (dono da terra)',cota:true,cotaPad:30,firme:false,base:'Sem regra específica'},
+  condominio:{nome:'Condomínio rural',cota:true,cotaPad:50,firme:false,base:'Sem regra específica'},
+  integrado:{nome:'Integração vertical (sou integrado)',cota:false,firme:true,base:'Art. 164, § 1º; art. 168, § 2º'},
+};
+const PRODUTOS={
+  natura:{nome:'In natura: grãos, gado vivo, café, leite cru (−60%, art. 137)',red:60},
+  cesta:{nome:'Cesta Básica, Anexo I: arroz, feijão, carnes (zero, art. 125)',red:100},
+  horti:{nome:'Hortícolas, frutas e ovos, Anexo XV (zero, art. 148)',red:100},
+  padrao:{nome:'Beneficiado ou industrializado, sem redução',red:0},
+};
+const COMPRAS=[
+  {id:'ins',nome:'Insumos do Anexo IX',aj:'Adubo, defensivo, semente, ração, vacina. −60% (art. 138), com diferimento.',pc:0,icms:0},
+  {id:'maq',nome:'Máquinas e implementos',aj:'Zero para não contribuinte (art. 110); lista depende do regulamento.',pc:9.25,icms:0},
+  {id:'comb',nome:'Combustíveis',aj:'Regime específico.',pc:0,icms:0},
+  {id:'out',nome:'Serviços e outras compras',aj:'Alíquota padrão, com crédito no regime regular.',pc:9.25,icms:0},
+  {id:'simples',nome:'Fornecedores do Simples',aj:'Crédito limitado ao que vem na nota.',pc:0,icms:0},
+  {id:'pf',nome:'Compras de PF não contribuinte',aj:'Sem IBS/CBS. No regime regular, gera crédito presumido.',pc:0,icms:0},
+];
+const PADRAO=()=>({nome:'',nat:'PF',outrasPJ:0,ativs:[novaAtiv()],arrRec:0,arrIm:0,arrCont:100,arr487:false,arrPag:0,arrPagCob:'nao',
+  compras:Object.fromEntries(COMPRAS.map(c=>[c.id,{v:0,pc:c.pc,icms:c.icms}])),
+  cbs:11.3,ibs:17.7,cpModo:'auto',cpPct:0,credSimples:4,combRed:0,tv:0,arrNoLimite:false});
+function novaAtiv(forma='propria'){ return {forma,prod:'natura',v:0,cota:FORMAS[forma].cotaPad||100,pPJ:100,pExp:0,notas:'cota'}; }
+
+/* ===================== cálculo ===================== */
+function receitaDe(a){ // receita do produtor na atividade (a cota entra só em parceria e condomínio)
+  const f=FORMAS[a.forma]; if(!f.cota) return +a.v||0;
+  if(a.forma==='condominio'&&a.notas==='cpf') return +a.v||0; // todas as notas no CPF: o fisco enxerga 100%
+  return (+a.v||0)*(+a.cota||0)/100;
+}
+function calcular(E){
+  const p=E, tvF=1-(+p.tv||0)/100;
+  const linhas=E.ativs.map(a=>{
+    const r=receitaDe(a); let pj=Math.max(0,+a.pPJ||0), ex=Math.max(0,+a.pExp||0);
+    if(a.forma==='integrado'){ pj=100; ex=0; }
+    const soma=pj+ex, erro=soma>100; if(erro){ pj=pj/soma*100; ex=ex/soma*100; }
+    return {a,r,base:r*tvF,red:PRODUTOS[a.prod].red,pj:pj/100,ex:ex/100,nc:Math.max(0,1-(pj+ex)/100),erro};
+  });
+  const vendas=linhas.reduce((s,l)=>s+l.r,0), vendasPJ=linhas.reduce((s,l)=>s+l.r*l.pj,0);
+  const naoIntegrado=linhas.filter(l=>l.a.forma!=='integrado').reduce((s,l)=>s+l.r,0);
+  const soIntegrado=vendas>0&&naoIntegrado===0;
+  const rec=+E.arrRec||0, pag=+E.arrPag||0, contTen=Math.min(100,Math.max(0,+E.arrCont||0))/100;
+  const recLimite=naoIntegrado+(+E.outrasPJ||0)+(E.arrNoLimite?rec:0);
+  const lim=soIntegrado&&!(+E.outrasPJ)?{A:true,cls:'ok',txt:'Integrado: não contribuinte',det:'O produtor integrado não é contribuinte, seja qual for a receita (art. 164, caput e § 1º). Pode optar pelo regime regular (art. 165).'}:
+    recLimite<LIMITE?{A:true,cls:'ok',txt:'Abaixo do limite',det:'Pode ficar como não contribuinte (art. 164) ou optar pelo regime regular (art. 165). A opção vale a partir do mês seguinte e não pode ser desfeita no mesmo ano.'}:
+    recLimite<=LIMITE*1.2?{A:false,cls:'warn',txt:'Acima do limite, até 20%',det:'Excesso de até 20%: passa a contribuinte no ano seguinte (art. 164, § 3º).'}:
+    {A:false,cls:'crit',txt:'Acima do limite, mais de 20%',det:'Contribuinte a partir do 2º mês seguinte ao excesso (art. 164, § 2º). O cenário A fica só para comparação.'};
+  const arrTribA=rec>0&&(E.nat==='PJ'||(rec>LIM_ARR&&(+E.arrIm||0)>3));
+  const shareContrib=vendas>0?Math.min(1,vendasPJ/vendas):0;
+  const comp=COMPRAS.map(c=>{const x=E.compras[c.id]||{v:0,pc:0,icms:0}; const v=+x.v||0, pc=(+x.pc||0)/100, ic=(+x.icms||0)/100;
+    return {id:c.id,v,pc:v*pc,icms:v*ic,net:v*(1-pc-ic)};});
+  function fatorCompra(id,al,cen){ // alíquota de IBS/CBS no preço da compra, em fração
+    const cheia=(al.cbs+al.ibs)/100; if(al.teste) return 0;
+    if(id==='pf') return 0;
+    if(id==='simples') return (al.cbs+al.ibs)/(p.cbs+p.ibs)*(+p.credSimples||0)/100;
+    if(id==='ins') return cen==='B'?0:cheia*.4*(1-shareContrib); // art. 138, §§ 2º e 3º
+    if(id==='maq'&&cen==='A') return 0;
+    if(id==='comb') return cheia*(1-(+p.combRed||0)/100);
+    return cheia;
+  }
+  const pleno=aliq(2033,p);
+  const emb=comp.reduce((s,c)=>s+c.net*fatorCompra(c.id,pleno,'A'),0)+(E.arrPagCob==='sim'?pag*(pleno.cbs+pleno.ibs)*.003:0);
+  const cpAuto=vendas>0?100*emb/vendas:0, cpPleno=p.cpModo==='auto'?cpAuto:(+p.cpPct||0);
+  const pleno100=p.cbs+p.ibs;
+  const anos=ANOS.map(ano=>{
+    const al=aliq(ano,p), lg=LEG[ano], ch=(al.cbs+al.ibs)/100;
+    const cpY=al.teste?0:cpPleno/100*(al.cbs+al.ibs)/pleno100;
+    const legC=comp.reduce((s,c)=>s+c.pc*lg.pc+c.icms*lg.icms,0);
+    const A={legC,novoC:0,cp:0,arrImp:0,arrNC:0,arrPago:0}, B={legC,deb:0,cred:0,debNC:0,arrImp:0};
+    for(const l of linhas){
+      const t=al.teste?0:ch*(1-l.red/100);
+      const dv=l.base*(1-l.ex)*t;
+      B.deb+=dv; B.debNC+=l.base*l.nc*t; A.cp+=l.r*l.pj*cpY;
+    }
+    for(const c of comp){
+      A.novoC+=c.net*fatorCompra(c.id,al,'A');
+      if(c.id==='pf') B.cred+=c.net*cpY; else B.cred+=c.net*fatorCompra(c.id,al,'B');
+    }
+    const tArr=al.teste?0:E.arr487?.0365:ch*.3;   // art. 261, parágrafo único; art. 487
+    const arrV=rec*tArr;
+    if(arrTribA){ A.arrImp=arrV; A.arrNC=arrV*(1-contTen); }
+    B.arrImp=arrV; B.deb+=arrV; B.debNC+=arrV*(1-contTen);
+    if(E.arrPagCob==='sim'&&!al.teste){ A.arrPago=pag*ch*.3; B.cred+=pag*ch*.3; }
+    A.custo=A.legC+A.novoC+A.arrPago; A.cadeia=A.custo-A.cp+A.arrNC;
+    B.saldo=B.deb-B.cred; B.custo=B.legC; B.cadeia=B.custo+B.debNC;
+    return {ano,al,cpY,A,B,dif:A.cadeia-B.cadeia};
+  });
+  const a33=anos[anos.length-1];
+  const equilibrio=vendasPJ>0?100*(a33.A.custo+a33.A.arrNC-a33.B.cadeia)/vendasPJ:null;
+  return {linhas,vendas,vendasPJ,recLimite,naoIntegrado,lim,arrTribA,rec,pag,shareContrib,comp,cpAuto,cpPleno,anos,equilibrio,a33};
+}
+
+/* ===================== formulário ===================== */
+let E=carregar();
+function carregar(){
+  const base=PADRAO();
+  try{ const s=JSON.parse(localStorage.getItem(LS_KEY)||'null'); if(s) return Object.assign(base,s,{compras:Object.assign(base.compras,s.compras||{})}); }catch(e){}
+  return base;
+}
+function salvar(){ try{ localStorage.setItem(LS_KEY,JSON.stringify(E)); }catch(e){} }
+const CAMPOS=['nome','nat','outrasPJ','arrRec','arrIm','arrCont','arr487','arrPag','arrPagCob','cbs','ibs','cpModo','cpPct','credSimples','combRed','tv','arrNoLimite'];
+function vazio(v){ return v===0||v==null?'':v; }
+function pintarForm(){
+  for(const k of CAMPOS){ const el=$('#'+k); if(el.type==='checkbox') el.checked=!!E[k]; else el.value=el.type==='number'&&['outrasPJ','arrRec','arrIm','arrPag'].includes(k)?vazio(E[k]):E[k]; }
+  $('#cpLinha').classList.toggle('hidden',E.cpModo!=='manual');
+  pintarAtivs(); pintarCompras();
+}
+function pintarAtivs(){
+  $('#ativs').innerHTML=E.ativs.map((a,i)=>{
+    const f=FORMAS[a.forma], integ=a.forma==='integrado';
+    return `<div class="ativ" data-i="${i}">
+      <div class="ativ-top"><select data-a="forma" class="wide">${Object.entries(FORMAS).map(([k,x])=>`<option value="${k}" ${k===a.forma?'selected':''}>${x.nome}</option>`).join('')}</select>
+      ${E.ativs.length>1?`<button class="btn icon-btn" data-del="${i}" title="Remover atividade" aria-label="Remover atividade">×</button>`:''}</div>
+      ${integ?'':`<select data-a="prod" class="wide">${Object.entries(PRODUTOS).map(([k,x])=>`<option value="${k}" ${k===a.prod?'selected':''}>${x.nome}</option>`).join('')}</select>`}
+      <div class="ativ-nums">
+        <label><span>${integ?'Remuneração do contrato':f.cota?'Valor total da produção':'Valor das vendas'} (R$/ano)</span><input data-a="v" type="number" min="0" step="any" value="${vazio(a.v)}"></label>
+        ${f.cota?`<label><span>Minha cota (%)</span><input data-a="cota" type="number" min="0" max="100" step="any" value="${a.cota}"></label>`:''}
+        ${integ?'':`<label><span>Vendo a contribuintes (%)</span><input data-a="pPJ" type="number" min="0" max="100" step="any" value="${a.pPJ}"></label>
+        <label><span>Exporto (%)</span><input data-a="pExp" type="number" min="0" max="100" step="any" value="${a.pExp}"></label>`}
+      </div>
+      ${a.forma==='condominio'?`<label class="fl mini"><span>Como saem as notas</span><select data-a="notas"><option value="cota" ${a.notas==='cota'?'selected':''}>Cada condômino emite a sua cota</option><option value="cpf" ${a.notas==='cpf'?'selected':''}>Todas no meu CPF</option></select></label>`:''}
+    </div>`;
+  }).join('');
+}
+function pintarCompras(){
+  $('#tbCompras').innerHTML=COMPRAS.map(c=>{const x=E.compras[c.id];
+    return `<tr data-c="${c.id}"><td><b>${c.nome}</b><small>${c.aj}</small></td>
+    <td class="v"><input data-f="v" type="number" min="0" step="any" value="${vazio(x.v)}"></td>
+    <td class="v"><input class="pct" data-f="pc" type="number" min="0" max="100" step="any" value="${x.pc}"></td>
+    <td class="v"><input class="pct" data-f="icms" type="number" min="0" max="100" step="any" value="${x.icms}"></td></tr>`;}).join('');
+}
+for(const k of CAMPOS){ const el=$('#'+k);
+  el.addEventListener('input',()=>{ E[k]=el.type==='checkbox'?el.checked:el.type==='number'?(el.value===''?0:+el.value):el.value;
+    if(k==='cpModo') $('#cpLinha').classList.toggle('hidden',E.cpModo!=='manual'); atualizar(); }); }
+$('#nome').addEventListener('input',e=>{E.nome=e.target.value;atualizar();});
+$('#ativs').addEventListener('input',e=>{ const t=e.target, k=t.dataset.a; if(!k) return; const i=+t.closest('.ativ').dataset.i, a=E.ativs[i];
+  if(k==='forma'){ E.ativs[i]=Object.assign(novaAtiv(t.value),{v:a.v,prod:a.prod,pPJ:a.pPJ,pExp:a.pExp}); pintarAtivs(); }
+  else if(k==='prod'||k==='notas'){ a[k]=t.value; if(k==='notas') pintarAtivs(); }
+  else a[k]=t.value===''?0:+t.value;
+  atualizar(); });
+$('#ativs').addEventListener('click',e=>{ const d=e.target.closest('[data-del]'); if(!d) return; E.ativs.splice(+d.dataset.del,1); pintarAtivs(); atualizar(); });
+$('#btnAddAtiv').onclick=()=>{ E.ativs.push(novaAtiv()); pintarAtivs(); atualizar(); };
+$('#tbCompras').addEventListener('input',e=>{ const t=e.target; if(!t.dataset.f) return; E.compras[t.closest('tr').dataset.c][t.dataset.f]=t.value===''?0:+t.value; atualizar(); });
+$('#btnLimpar').onclick=()=>{ E=PADRAO(); pintarForm(); atualizar(); };
+$('#btnPrint').onclick=()=>window.print();
+$('#btnTheme').onclick=()=>{const r=document.documentElement, dark=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches; r.dataset.theme=dark?'light':'dark';};
+
+const EX={
+  pequeno:()=>({nome:'Exemplo: PF dona da terra',ativs:[{...novaAtiv(),v:2000000,pPJ:90}],compras:{ins:800000,maq:200000,comb:150000,out:250000}}),
+  arrendatario:()=>({nome:'Exemplo: PF arrendatária',ativs:[{...novaAtiv('arrendatario'),v:8000000,pPJ:85,pExp:10}],arrPag:900000,compras:{ins:3000000,maq:600000,comb:500000,out:900000}}),
+  parceria:()=>({nome:'Exemplo: parceria e arrendamento',ativs:[{...novaAtiv('outorgante'),v:5000000,cota:30,pPJ:100},{...novaAtiv('propria'),v:1200000,pPJ:80}],arrRec:360000,arrIm:4,arrCont:50,compras:{ins:500000,comb:80000,out:150000}}),
+  holding:()=>({nome:'Exemplo: holding arrendadora',nat:'PJ',ativs:[novaAtiv()],arrRec:1500000,arrIm:2,arrCont:100,compras:{out:120000}}),
+  integrado:()=>({nome:'Exemplo: integrado + condomínio',ativs:[{...novaAtiv('integrado'),v:1800000},{...novaAtiv('condominio'),v:6000000,cota:25,notas:'cpf',pPJ:100}],compras:{ins:300000,out:200000}}),
+};
+$('#exemplo').onchange=e=>{ const k=e.target.value; if(!k) return; const x=EX[k](), base=PADRAO();
+  for(const [id,v] of Object.entries(x.compras||{})) base.compras[id].v=v;
+  delete x.compras; E=Object.assign(base,x); e.target.value=''; pintarForm(); atualizar(); };
+
+/* ===================== resultado ===================== */
+function kpi(k,v,d,cor){ return `<div class="kpi" style="--c:${cor}"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d}</div></div>`; }
+function veredito(R){
+  const eq=R.equilibrio, d33=R.a33.dif, tem=R.vendas>0||R.rec>0;
+  if(!tem) return {t:'Informe as vendas ou o arrendamento para ver a simulação',p:'Se quiser, carregue um exemplo no menu acima.'};
+  if(!R.lim.A) return {t:'Contribuinte obrigatório: regime regular (cenário B)',p:`A receita de ${RC(R.recLimite)} passa do limite de R$ 3,6 mi. ${R.lim.det}`};
+  if(R.vendas===0) return {t:'Só arrendamento: a comparação de regimes não se aplica',p:R.arrTribA?'O arrendamento é tributado pelo regime de imóveis, com redução de 70%.':'Pelos valores informados, o arrendamento não é tributado (art. 251, § 1º).'};
+  if(eq!=null&&eq<-0.005) return {t:'Não contribuinte (A) é melhor, com qualquer crédito presumido',p:'Mesmo sem crédito presumido ao comprador, o cenário A custa menos na cadeia em 2033.'};
+  if(eq!=null){ const usa=E.cpModo==='manual';
+    return {t:usa?(d33<0?'Com o percentual informado, não contribuinte (A) é melhor':'Com o percentual informado, regime regular (B) é melhor'):`A decisão depende do crédito presumido: o ponto de virada é ${PC(Math.max(0,eq))}`,
+      p:`Se o percentual oficial do art. 168 ficar acima de ${PC(Math.max(0,eq))} das vendas a contribuintes, ser não contribuinte (A) compensa; abaixo disso, compensa o regime regular (B). O percentual ainda não foi publicado.`}; }
+  return {t:d33<0?'Não contribuinte (A) é melhor':'Regime regular (B) é melhor',p:'Não há vendas a contribuintes, então o crédito presumido não muda o resultado.'};
+}
+function alertas(R){
+  const out=[];
+  const nf=[...new Set(R.linhas.filter(l=>!FORMAS[l.a.forma].firme).map(l=>l.a.forma))];
+  if(nf.includes('outorgado')||nf.includes('outorgante')) out.push('<b>Parceria sem regra específica:</b> a LC 214 não trata da parceria rural. A conta assume que a partilha de frutos não é tributada e que cada parceiro é produtor rural só pela própria cota. O regulamento pode decidir de outra forma.');
+  if(nf.includes('condominio')) out.push(E.ativs.some(a=>a.forma==='condominio'&&a.notas==='cpf')?'<b>Condomínio com notas num só CPF:</b> a conta usa 100% da receita nesse CPF, que é o que o fisco enxerga. A lei não prevê a divisão por cota.':'<b>Condomínio dividido por cota:</b> a conta usa só a sua cota, supondo que cada condômino emita as próprias notas. A LC 214 não trata do condomínio rural.');
+  if(R.rec>0&&E.nat==='PF'&&!R.arrTribA&&!R.lim.A) out.push('<b>Arrendamento de PF contribuinte:</b> o art. 251, caput, alcança imóveis de quem apura no regime regular. Por isso a conta tributa o arrendamento no cenário B, mesmo abaixo de R$ 240 mil. É uma leitura a confirmar no regulamento.');
+  if(R.rec>LIM_ARR*1.2&&E.nat==='PF'&&(+E.arrIm||0)<=3) out.push('<b>Arrendamento acima de R$ 288 mil com até 3 imóveis:</b> o art. 251, § 2º, II, fala só do valor. Há quem entenda que basta excedê-lo. A conta não tributa no cenário A; confira o caso.');
+  if(R.rec>0&&E.nat==='PJ') out.push('<b>PJ arrendadora:</b> a conta tributa o arrendamento em qualquer valor (art. 251, caput). Empresa do Simples Nacional tem regra própria, que não está aqui.');
+  if(R.vendas===0&&R.arrTribA) out.push('<b>Cenário A não se aplica aqui:</b> quem tem o arrendamento tributado já é contribuinte. A linha do cenário A só mostra o valor sem os créditos das compras; use o cenário B.');
+  if(R.pag>0&&E.arrPagCob==='nao') out.push('<b>Arrendamento pago sem IBS/CBS:</b> sem cobrança não há crédito. Se o dono da terra mudar de situação, o contrato pode precisar de ajuste de preço.');
+  if(R.lim.A&&R.recLimite>=LIMITE*.8) out.push(`<b>Perto do limite:</b> a receita está em ${PC(100*R.recLimite/LIMITE)} de R$ 3,6 mi, que é corrigido pelo IPCA (art. 167).`);
+  if(R.linhas.some(l=>l.erro)) out.push('<b>Percentuais de venda somam mais de 100%:</b> a conta ajustou a proporção. Revise a atividade.');
+  if(R.linhas.some(l=>l.a.forma==='integrado')&&R.naoIntegrado>0) out.push('<b>Integrado com outras atividades:</b> a conta deixa a remuneração da integração fora do limite. A lei não trata desse caso misto.');
+  if(R.a33.B.saldo<-0.5&&R.vendas>0) out.push(`<b>Saldo credor no regime regular:</b> em 2033 os créditos superam os débitos em ${RC(-R.a33.B.saldo)}. Esse valor depende de ressarcimento, o que pesa no caixa.`);
+  return out;
+}
+function tratamento(R){
+  const ls=R.linhas.map(l=>{const f=FORMAS[l.a.forma], pr=l.a.forma==='integrado'?'Remuneração':PRODUTOS[l.a.prod].nome.split(':')[0].split(' (')[0].split(',')[0];
+    return `<tr><td>${f.nome}<small>${pr}</small></td><td class="v">${N0(l.r)}</td><td class="v">${l.a.forma==='integrado'?'Sem IBS/CBS':l.red===100?'Zero':l.red===60?'−60%':'Cheia'}</td><td><span class="st ${f.firme?'ok':'warn'}">${f.base}</span></td></tr>`;});
+  if(R.rec>0) ls.push(`<tr><td>Arrendamento recebido<small>${E.arr487?'Opção pelos 3,65% da receita (art. 487)':R.arrTribA?'Tributado nos dois cenários':'Tributado só no cenário B'}</small></td><td class="v">${N0(R.rec)}</td><td class="v">${E.arr487?'3,65%':'−70%'}</td><td><span class="st ok">Arts. 251, 261${E.arr487?', 487':''}</span></td></tr>`);
+  if(R.pag>0) ls.push(`<tr><td>Arrendamento pago<small>${E.arrPagCob==='sim'?'Crédito no regime regular; custo no cenário A':'Sem IBS/CBS e sem crédito'}</small></td><td class="v">${N0(R.pag)}</td><td class="v">${E.arrPagCob==='sim'?'−70%':'Sem IBS/CBS'}</td><td><span class="st ok">Arts. 251, 261</span></td></tr>`);
+  return ls.join('')||'<tr><td colspan="4" class="muted">Nenhuma atividade informada.</td></tr>';
+}
+function projecao(R){
+  const y=f=>R.anos.map(a=>`<td class="v">${f(a)}</td>`).join('');
+  return `<table class="proj"><thead><tr><th>R$ por ano</th>${R.anos.map(a=>`<th class="v">${a.ano}</th>`).join('')}</tr></thead><tbody>
+  <tr class="aliq"><td>Alíquota cheia CBS + IBS</td>${y(a=>a.al.teste?'teste':PC(a.al.cbs+a.al.ibs))}</tr>
+  <tr class="sec sa"><td colspan="9">Cenário A: não contribuinte${R.lim.A?'':' (só comparação)'}</td></tr>
+  <tr><td>IBS/CBS nas compras, sem crédito</td>${y(a=>N0(a.A.novoC+a.A.arrPago))}</tr>
+  <tr><td>PIS/COFINS e ICMS ainda no preço</td>${y(a=>N0(a.A.legC))}</tr>
+  <tr><td>Crédito presumido ao comprador</td>${y(a=>N0(-a.A.cp))}</tr>
+  ${R.rec>0?`<tr><td>IBS/CBS do arrendamento recebido</td>${y(a=>N0(a.A.arrImp))}</tr>`:''}
+  <tr class="big"><td>Custo líquido na cadeia</td>${y(a=>N0(a.A.cadeia))}</tr>
+  <tr class="sec sb"><td colspan="9">Cenário B: regime regular</td></tr>
+  <tr><td>Débitos nas vendas${R.rec>0?' e arrendamento':''}</td>${y(a=>N0(a.B.deb))}</tr>
+  <tr><td>Créditos nas compras</td>${y(a=>N0(-a.B.cred))}</tr>
+  <tr class="tot"><td>A recolher (saldo credor, se negativo)</td>${y(a=>N0(a.B.saldo))}</tr>
+  <tr><td>PIS/COFINS e ICMS ainda no preço</td>${y(a=>N0(a.B.legC))}</tr>
+  <tr><td>IBS/CBS pago por quem não tem crédito</td>${y(a=>N0(a.B.debNC))}</tr>
+  <tr class="big"><td>Custo líquido na cadeia</td>${y(a=>N0(a.B.cadeia))}</tr>
+  <tr class="dif"><td>A − B (positivo: B é melhor)</td>${y(a=>N0(a.dif))}</tr>
+  </tbody></table>`;
+}
+let ULT=null;
+function atualizar(){
+  salvar();
+  const R=calcular(E); ULT=R; const v=veredito(R), al=alertas(R), a=R.a33;
+  const eqTxt=R.equilibrio==null?'Não se aplica':R.equilibrio<-0.005?'A sempre melhor':PC(Math.max(0,R.equilibrio));
+  $('#saida').innerHTML=`
+  <div class="card verdict"><div class="v-head"><div class="v-ico">→</div><div><h2>${esc(v.t)}</h2><p class="v-p">${esc(v.p)}</p>${E.nome?`<p class="muted">${esc(E.nome)} · ${E.nat==='PF'?'Pessoa física':'Pessoa jurídica'}</p>`:''}</div></div></div>
+  <div class="kpis mt">
+    ${kpi('Receita no limite',RC(R.recLimite),`<span class="st ${R.lim.cls}">${R.lim.txt}</span>`,'var(--s1)')}
+    ${kpi('Ponto de virada do crédito presumido',eqTxt,'Em % das vendas a contribuintes, 2033','var(--s3)')}
+    ${kpi('Custo na cadeia em 2033: A',RC(a.A.cadeia),`Crédito presumido em uso: ${PC(R.cpPleno)}${E.cpModo==='auto'?' (estimado)':''}`,'var(--s2)')}
+    ${kpi('Custo na cadeia em 2033: B',RC(a.B.cadeia),'IBS/CBS que fica com quem não tem crédito','var(--s4)')}
+  </div>
+  ${al.length?`<div class="card mt"><h2>Pontos de atenção</h2><ul class="al">${al.map(x=>`<li>${x}</li>`).join('')}</ul></div>`:''}
+  <div class="card mt"><h2>Ano a ano</h2><p class="sub">Preço líquido de hoje mantido; IBS/CBS cobrado por fora. Valores em reais de hoje, sem inflação.</p><div class="tbl-wrap">${projecao(R)}</div></div>
+  <div class="card mt"><h2>Como cada atividade é tratada</h2><p class="sub">O selo laranja indica que a lei não tem regra específica e a conta usa uma premissa.</p><div class="tbl-wrap"><table class="trat"><thead><tr><th>Atividade</th><th class="v">Receita (R$/ano)</th><th class="v">Alíquota</th><th>Base</th></tr></thead><tbody>${tratamento(R)}</tbody></table></div></div>
+  <details class="card mt"><summary><b>Método e limites da conta</b></summary><div class="prose mt">
+    <ul>
+    <li><b>Custo líquido na cadeia:</b> A = IBS/CBS sem crédito nas compras − crédito presumido ao comprador; B = IBS/CBS pago por quem não aproveita crédito. Compara o que fica de imposto no preço, não o que sai do caixa do produtor.</li>
+    <li><b>Transição:</b> 2026 é teste (sem efeito). 2027–2028: CBS menos 0,1 p.p. (art. 347) e IBS de 0,1% (art. 344). 2029–2032: IBS a 10%–40% da referência; ICMS a 90%–60%. 2033: regime pleno. A CBS de 11,3% é repetida depois de 2027, embora a lei mande recalcular todo ano.</li>
+    <li><b>Arrendamento:</b> redução de 70% (art. 261, parágrafo único). PF só é contribuinte com mais de R$ 240 mil e mais de 3 imóveis (art. 251, § 1º). Pagamento em produto: a conta usa o valor informado; a base em produto depende de regulamento.</li>
+    <li><b>Insumos no cenário A:</b> o diferimento alcança só a parcela vendida a quem tem crédito do art. 168 (art. 138, §§ 2º e 3º); o restante paga 40% da alíquota.</li>
+    <li><b>Fora da conta:</b> imposto de renda, folha, Funrural, Simples Nacional da PJ, créditos atuais de PIS/COFINS, efeito no preço de venda e correção do limite pelo IPCA.</li>
+    <li><b>Fonte:</b> texto original da LC 214/2025. As alterações da LC 227/2026 sobre estes temas não foram conferidas.</li>
+    </ul></div></details>`;
+}
+$('#btnCsv').onclick=()=>{ const R=ULT, q=v=>nf2.format(zero(v));
+  const rows=[['R$ por ano',...R.anos.map(a=>a.ano)],
+   ['A: IBS/CBS nas compras',...R.anos.map(a=>q(a.A.novoC+a.A.arrPago))],['A: PIS/COFINS e ICMS no preço',...R.anos.map(a=>q(a.A.legC))],['A: crédito presumido',...R.anos.map(a=>q(-a.A.cp))],['A: arrendamento recebido',...R.anos.map(a=>q(a.A.arrImp))],['A: custo na cadeia',...R.anos.map(a=>q(a.A.cadeia))],
+   ['B: débitos',...R.anos.map(a=>q(a.B.deb))],['B: créditos',...R.anos.map(a=>q(-a.B.cred))],['B: a recolher',...R.anos.map(a=>q(a.B.saldo))],['B: PIS/COFINS e ICMS no preço',...R.anos.map(a=>q(a.B.legC))],['B: pago por quem não tem crédito',...R.anos.map(a=>q(a.B.debNC))],['B: custo na cadeia',...R.anos.map(a=>q(a.B.cadeia))],['A − B',...R.anos.map(a=>q(a.dif))]];
+  const blob=new Blob(['﻿'+rows.map(r=>r.join(';')).join('\r\n')],{type:'text/csv'}), u=URL.createObjectURL(blob), l=document.createElement('a');
+  l.href=u; l.download='calculadora_reforma_projecao.csv'; l.click(); URL.revokeObjectURL(u); };
+
+pintarForm(); atualizar();
+</script>
+</body>
+</html>
