@@ -44,7 +44,7 @@
           <h3 class="h3">Recebo arrendamento (sou o dono da terra)</h3>
           <label class="fl"><span><b>Valor recebido por ano</b></span><span class="inp">R$<input id="arrRec" type="number" min="0" step="any"></span></label>
           <label class="fl"><span><b>Número de imóveis arrendados</b><small>Pessoa física só é contribuinte com mais de 3 e mais de R$ 240 mil (art. 251, § 1º).</small></span><span class="inp"><input id="arrIm" type="number" min="0" step="1"></span></label>
-          <label class="fl"><span><b>Arrendatários que aproveitam crédito</b><small>Contribuintes do regime regular.</small></span><span class="inp"><input id="arrCont" type="number" min="0" max="100" step="any">%</span></label>
+          <label class="fl"><span><b>Arrendatários que são empresas</b><small>Ou produtores no regime regular: são os que aproveitam crédito.</small></span><span class="inp"><input id="arrCont" type="number" min="0" max="100" step="any">%</span></label>
           <label class="fl chk"><input id="arr487" type="checkbox"><span><b>Contrato antigo, com opção pelos 3,65% sobre a receita (art. 487)</b><small>Prazo determinado, firmado até a publicação da LC 214 (janeiro de 2025) e registrado até 31/12/2025 ou informado à RFB e ao Comitê Gestor. Sem direito a crédito nas compras ligadas ao imóvel.</small></span></label>
           <h3 class="h3">Pago arrendamento (sou o arrendatário)</h3>
           <label class="fl"><span><b>Valor pago por ano</b></span><span class="inp">R$<input id="arrPag" type="number" min="0" step="any"></span></label>
@@ -53,12 +53,12 @@
       </div>
 
       <div class="card mt">
-        <h2>4. Compras e despesas da atividade</h2><p class="sub">Valores por ano. "Embutido hoje" é o PIS/COFINS e o ICMS que já estão no preço; eles saem com a reforma. Sem folha de pagamento.</p>
-        <div class="tbl-wrap"><table class="compras"><thead><tr><th>Grupo</th><th class="v">Valor (R$/ano)</th><th class="v">PIS/COFINS embutido</th><th class="v">ICMS embutido</th></tr></thead><tbody id="tbCompras"></tbody></table></div>
+        <h2>4. Compras e despesas por ano</h2><p class="sub">Informe o total gasto em cada grupo, pelo valor das notas. Não precisa separar impostos. Folha de pagamento fica fora. Deixe em branco o que não souber.</p>
+        <div class="tbl-wrap"><table class="compras"><thead><tr><th>Grupo</th><th class="v">Valor (R$/ano)</th></tr></thead><tbody id="tbCompras"></tbody></table></div>
       </div>
 
       <details class="card mt">
-        <summary><b>5. Premissas</b> <span class="muted">alíquotas e crédito presumido</span></summary>
+        <summary><b>5. Premissas</b> <span class="muted">opcional: alíquotas e crédito presumido já vêm preenchidos</span></summary>
         <div class="form mt">
           <label class="fl"><span><b>CBS de referência</b><small>TCU, 28/10/2026: 11,3% para 2027. Pendente de resolução do Senado até 15/12/2026.</small></span><span class="inp"><input id="cbs" type="number" step="any">%</span></label>
           <label class="fl"><span><b>IBS de referência</b><small>Estimativa do Comitê Gestor: 18,7% (Resolução CGIBS nº 14/2026). Ainda não há alíquota oficial.</small></span><span class="inp"><input id="ibs" type="number" step="any">%</span></label>
@@ -66,7 +66,6 @@
           <label class="fl" id="cpLinha"><span><b>Percentual sobre as vendas, regime pleno</b></span><span class="inp"><input id="cpPct" type="number" min="0" step="any">%</span></label>
           <label class="fl"><span><b>Crédito de fornecedor do Simples</b><small>Parcela de IBS/CBS que vem na nota, em regime pleno.</small></span><span class="inp"><input id="credSimples" type="number" min="0" step="any">%</span></label>
           <label class="fl"><span><b>Combustíveis: redução equivalente</b><small>Regime específico por litro, ainda sem valores (arts. 172 a 180).</small></span><span class="inp"><input id="combRed" type="number" min="0" max="100" step="any">%</span></label>
-          <label class="fl"><span><b>Tributos embutidos nas vendas hoje</b><small>ICMS e PIS/COFINS no preço de venda. Saem da base do IBS/CBS.</small></span><span class="inp"><input id="tv" type="number" min="0" max="100" step="any">%</span></label>
           <label class="fl chk"><input id="arrNoLimite" type="checkbox"><span><b>Somar o arrendamento recebido no limite de R$ 3,6 mi</b><small>A lei não define se essa receita conta. Desligado por padrão.</small></span></label>
         </div>
       </details>
@@ -87,7 +86,6 @@ const LS_KEY='agritax-calcrt-v1';
 /* ===================== regras ===================== */
 const LIMITE=3600000, LIM_ARR=240000;
 const ANOS=[2026,2027,2028,2029,2030,2031,2032,2033];
-const LEG={2026:{pc:1,icms:1},2027:{pc:0,icms:1},2028:{pc:0,icms:1},2029:{pc:0,icms:.9},2030:{pc:0,icms:.8},2031:{pc:0,icms:.7},2032:{pc:0,icms:.6},2033:{pc:0,icms:0}};
 const FIBS={2029:.1,2030:.2,2031:.3,2032:.4};
 function aliq(ano,p){ // alíquotas cheias, em %
   if(ano<=2026) return {cbs:0,ibs:0,teste:true};
@@ -109,16 +107,16 @@ const PRODUTOS={
   padrao:{nome:'Beneficiado ou industrializado, sem redução',red:0},
 };
 const COMPRAS=[
-  {id:'ins',nome:'Insumos do Anexo IX',aj:'Adubo, defensivo, semente, ração, vacina. −60% (art. 138), com diferimento.',pc:0,icms:0},
-  {id:'maq',nome:'Máquinas e implementos',aj:'Zero para não contribuinte (art. 110); lista depende do regulamento.',pc:9.25,icms:0},
-  {id:'comb',nome:'Combustíveis',aj:'Regime específico.',pc:0,icms:0},
-  {id:'out',nome:'Serviços e outras compras',aj:'Alíquota padrão, com crédito no regime regular.',pc:9.25,icms:0},
-  {id:'simples',nome:'Fornecedores do Simples',aj:'Crédito limitado ao que vem na nota.',pc:0,icms:0},
-  {id:'pf',nome:'Compras de PF não contribuinte',aj:'Sem IBS/CBS. No regime regular, gera crédito presumido.',pc:0,icms:0},
+  {id:'ins',nome:'Insumos',aj:'Adubo, defensivo, semente, ração, sal mineral, vacina.',pc:0},
+  {id:'maq',nome:'Máquinas e implementos',aj:'Trator, colheitadeira, plantadeira, pulverizador.',pc:9.25},
+  {id:'comb',nome:'Diesel e combustíveis',aj:'',pc:0},
+  {id:'out',nome:'Serviços e outras compras',aj:'Frete, manutenção, peças, energia, assistência técnica.',pc:9.25},
+  {id:'simples',nome:'Compras de pequenas empresas',aj:'Fornecedores do Simples Nacional, se souber separar.',pc:0},
+  {id:'pf',nome:'Compras de outros produtores PF',aj:'Bezerro, boi magro, grãos, serviços de pessoa física.',pc:0},
 ];
 const PADRAO=()=>({nome:'',nat:'PF',outrasPJ:0,ativs:[novaAtiv()],arrRec:0,arrIm:0,arrCont:100,arr487:false,arrPag:0,arrPagCob:'nao',
-  compras:Object.fromEntries(COMPRAS.map(c=>[c.id,{v:0,pc:c.pc,icms:c.icms}])),
-  aliqVer:2,cbs:11.3,ibs:18.7,cpModo:'auto',cpPct:0,credSimples:4,combRed:0,tv:0,arrNoLimite:false});
+  compras:Object.fromEntries(COMPRAS.map(c=>[c.id,{v:0}])),
+  aliqVer:2,cbs:11.3,ibs:18.7,cpModo:'auto',cpPct:0,credSimples:4,combRed:0,arrNoLimite:false});
 function novaAtiv(forma='propria'){ return {forma,prod:'natura',v:0,cota:FORMAS[forma].cotaPad||100,pPJ:100,pExp:0,notas:'cota'}; }
 
 /* ===================== cálculo ===================== */
@@ -128,12 +126,12 @@ function receitaDe(a){ // receita do produtor na atividade (a cota entra só em 
   return (+a.v||0)*(+a.cota||0)/100;
 }
 function calcular(E){
-  const p=E, tvF=1-(+p.tv||0)/100;
+  const p=E;
   const linhas=E.ativs.map(a=>{
     const r=receitaDe(a); let pj=Math.max(0,+a.pPJ||0), ex=Math.max(0,+a.pExp||0);
     if(a.forma==='integrado'){ pj=100; ex=0; }
     const soma=pj+ex, erro=soma>100; if(erro){ pj=pj/soma*100; ex=ex/soma*100; }
-    return {a,r,base:r*tvF,red:PRODUTOS[a.prod].red,pj:pj/100,ex:ex/100,nc:Math.max(0,1-(pj+ex)/100),erro};
+    return {a,r,base:r,red:PRODUTOS[a.prod].red,pj:pj/100,ex:ex/100,nc:Math.max(0,1-(pj+ex)/100),erro};
   });
   const vendas=linhas.reduce((s,l)=>s+l.r,0), vendasPJ=linhas.reduce((s,l)=>s+l.r*l.pj,0);
   const naoIntegrado=linhas.filter(l=>l.a.forma!=='integrado').reduce((s,l)=>s+l.r,0);
@@ -146,8 +144,8 @@ function calcular(E){
     {A:false,cls:'crit',txt:'Acima do limite, mais de 20%',det:'Contribuinte a partir do 2º mês seguinte ao excesso (art. 164, § 2º). O cenário A fica só para comparação.'};
   const arrTribA=rec>0&&(E.nat==='PJ'||(rec>LIM_ARR&&(+E.arrIm||0)>3));
   const shareContrib=vendas>0?Math.min(1,vendasPJ/vendas):0;
-  const comp=COMPRAS.map(c=>{const x=E.compras[c.id]||{v:0,pc:0,icms:0}; const v=+x.v||0, pc=(+x.pc||0)/100, ic=(+x.icms||0)/100;
-    return {id:c.id,v,pc:v*pc,icms:v*ic,net:v*(1-pc-ic)};});
+  // PIS/COFINS de hoje sai do preço com a reforma: percentual médio fixo por grupo (o usuário não informa)
+  const comp=COMPRAS.map(c=>{const v=+(E.compras[c.id]||{}).v||0; return {id:c.id,v,net:v*(1-c.pc/100)};});
   function fatorCompra(id,al,cen){ // alíquota de IBS/CBS no preço da compra, em fração
     const cheia=(al.cbs+al.ibs)/100; if(al.teste) return 0;
     if(id==='pf') return 0;
@@ -162,10 +160,9 @@ function calcular(E){
   const cpAuto=vendas>0?100*emb/vendas:0, cpPleno=p.cpModo==='auto'?cpAuto:(+p.cpPct||0);
   const pleno100=p.cbs+p.ibs;
   const anos=ANOS.map(ano=>{
-    const al=aliq(ano,p), lg=LEG[ano], ch=(al.cbs+al.ibs)/100;
+    const al=aliq(ano,p), ch=(al.cbs+al.ibs)/100;
     const cpY=al.teste?0:cpPleno/100*(al.cbs+al.ibs)/pleno100;
-    const legC=comp.reduce((s,c)=>s+c.pc*lg.pc+c.icms*lg.icms,0);
-    const A={legC,novoC:0,cp:0,arrImp:0,arrNC:0,arrPago:0}, B={legC,deb:0,cred:0,debNC:0,arrImp:0};
+    const A={novoC:0,cp:0,arrImp:0,arrNC:0,arrPago:0}, B={deb:0,cred:0,debNC:0,arrImp:0};
     for(const l of linhas){
       const t=al.teste?0:ch*(1-l.red/100);
       const dv=l.base*(1-l.ex)*t;
@@ -180,8 +177,8 @@ function calcular(E){
     if(arrTribA){ A.arrImp=arrV; A.arrNC=arrV*(1-contTen); }
     B.arrImp=arrV; B.deb+=arrV; B.debNC+=arrV*(1-contTen);
     if(E.arrPagCob==='sim'&&!al.teste){ A.arrPago=pag*ch*.3; B.cred+=pag*ch*.3; }
-    A.custo=A.legC+A.novoC+A.arrPago; A.cadeia=A.custo-A.cp+A.arrNC;
-    B.saldo=B.deb-B.cred; B.custo=B.legC; B.cadeia=B.custo+B.debNC;
+    A.custo=A.novoC+A.arrPago; A.cadeia=A.custo-A.cp+A.arrNC;
+    B.saldo=B.deb-B.cred; B.custo=0; B.cadeia=B.debNC;
     return {ano,al,cpY,A,B,dif:A.cadeia-B.cadeia};
   });
   const a33=anos[anos.length-1];
@@ -197,7 +194,7 @@ function carregar(){
   return base;
 }
 function salvar(){ try{ localStorage.setItem(LS_KEY,JSON.stringify(E)); }catch(e){} }
-const CAMPOS=['nome','nat','outrasPJ','arrRec','arrIm','arrCont','arr487','arrPag','arrPagCob','cbs','ibs','cpModo','cpPct','credSimples','combRed','tv','arrNoLimite'];
+const CAMPOS=['nome','nat','outrasPJ','arrRec','arrIm','arrCont','arr487','arrPag','arrPagCob','cbs','ibs','cpModo','cpPct','credSimples','combRed','arrNoLimite'];
 function vazio(v){ return v===0||v==null?'':v; }
 function pintarForm(){
   for(const k of CAMPOS){ const el=$('#'+k); if(el.type==='checkbox') el.checked=!!E[k]; else el.value=el.type==='number'&&['outrasPJ','arrRec','arrIm','arrPag'].includes(k)?vazio(E[k]):E[k]; }
@@ -214,7 +211,7 @@ function pintarAtivs(){
       <div class="ativ-nums">
         <label><span>${integ?'Remuneração do contrato':f.cota?'Valor total da produção':'Valor das vendas'} (R$/ano)</span><input data-a="v" type="number" min="0" step="any" value="${vazio(a.v)}"></label>
         ${f.cota?`<label><span>Minha cota (%)</span><input data-a="cota" type="number" min="0" max="100" step="any" value="${a.cota}"></label>`:''}
-        ${integ?'':`<label><span>Vendo a contribuintes (%)</span><input data-a="pPJ" type="number" min="0" max="100" step="any" value="${a.pPJ}"></label>
+        ${integ?'':`<label><span>Vendo para empresas (%)</span><input data-a="pPJ" type="number" min="0" max="100" step="any" value="${a.pPJ}"></label>
         <label><span>Exporto (%)</span><input data-a="pExp" type="number" min="0" max="100" step="any" value="${a.pExp}"></label>`}
       </div>
       ${a.forma==='condominio'?`<label class="fl mini"><span>Como saem as notas</span><select data-a="notas"><option value="cota" ${a.notas==='cota'?'selected':''}>Cada condômino emite a sua cota</option><option value="cpf" ${a.notas==='cpf'?'selected':''}>Todas no meu CPF</option></select></label>`:''}
@@ -223,10 +220,8 @@ function pintarAtivs(){
 }
 function pintarCompras(){
   $('#tbCompras').innerHTML=COMPRAS.map(c=>{const x=E.compras[c.id];
-    return `<tr data-c="${c.id}"><td><b>${c.nome}</b><small>${c.aj}</small></td>
-    <td class="v"><input data-f="v" type="number" min="0" step="any" value="${vazio(x.v)}"></td>
-    <td class="v"><input class="pct" data-f="pc" type="number" min="0" max="100" step="any" value="${x.pc}"></td>
-    <td class="v"><input class="pct" data-f="icms" type="number" min="0" max="100" step="any" value="${x.icms}"></td></tr>`;}).join('');
+    return `<tr data-c="${c.id}"><td><b>${c.nome}</b>${c.aj?`<small>${c.aj}</small>`:''}</td>
+    <td class="v"><input data-f="v" type="number" min="0" step="any" value="${vazio(x.v)}"></td></tr>`;}).join('');
 }
 for(const k of CAMPOS){ const el=$('#'+k);
   el.addEventListener('input',()=>{ E[k]=el.type==='checkbox'?el.checked:el.type==='number'?(el.value===''?0:+el.value):el.value;
@@ -297,7 +292,6 @@ function projecao(R){
   <tr class="aliq"><td>Alíquota cheia CBS + IBS</td>${y(a=>a.al.teste?'teste':PC(a.al.cbs+a.al.ibs))}</tr>
   <tr class="sec sa"><td colspan="9">Cenário A: não contribuinte${R.lim.A?'':' (só comparação)'}</td></tr>
   <tr><td>IBS/CBS nas compras, sem crédito</td>${y(a=>N0(a.A.novoC+a.A.arrPago))}</tr>
-  <tr><td>PIS/COFINS e ICMS ainda no preço</td>${y(a=>N0(a.A.legC))}</tr>
   <tr><td>Crédito presumido ao comprador</td>${y(a=>N0(-a.A.cp))}</tr>
   ${R.rec>0?`<tr><td>IBS/CBS do arrendamento recebido</td>${y(a=>N0(a.A.arrImp))}</tr>`:''}
   <tr class="big"><td>Custo líquido na cadeia</td>${y(a=>N0(a.A.cadeia))}</tr>
@@ -305,7 +299,6 @@ function projecao(R){
   <tr><td>Débitos nas vendas${R.rec>0?' e arrendamento':''}</td>${y(a=>N0(a.B.deb))}</tr>
   <tr><td>Créditos nas compras</td>${y(a=>N0(-a.B.cred))}</tr>
   <tr class="tot"><td>A recolher (saldo credor, se negativo)</td>${y(a=>N0(a.B.saldo))}</tr>
-  <tr><td>PIS/COFINS e ICMS ainda no preço</td>${y(a=>N0(a.B.legC))}</tr>
   <tr><td>IBS/CBS pago por quem não tem crédito</td>${y(a=>N0(a.B.debNC))}</tr>
   <tr class="big"><td>Custo líquido na cadeia</td>${y(a=>N0(a.B.cadeia))}</tr>
   <tr class="dif"><td>A − B (positivo: B é melhor)</td>${y(a=>N0(a.dif))}</tr>
@@ -332,6 +325,8 @@ function atualizar(){
     <li><b>Custo líquido na cadeia:</b> A = IBS/CBS sem crédito nas compras − crédito presumido ao comprador; B = IBS/CBS pago por quem não aproveita crédito. Compara o que fica de imposto no preço, não o que sai do caixa do produtor.</li>
     <li><b>Transição:</b> 2026 é teste (sem efeito). 2027–2028: CBS menos 0,1 p.p. (art. 347) e IBS de 0,1% (art. 344). 2029–2032: IBS a 10%–40% da referência; ICMS a 90%–60%. 2033: regime pleno. A CBS de 11,3% (TCU) é repetida depois de 2027, embora a lei mande recalcular todo ano. O IBS de 18,7% é a estimativa do Comitê Gestor (Resolução CGIBS nº 14/2026); somado à CBS, passa da trava de 26,5% prevista para 2033.</li>
     <li><b>Arrendamento:</b> redução de 70% (art. 261, parágrafo único). PF só é contribuinte com mais de R$ 240 mil e mais de 3 imóveis (art. 251, § 1º). Pagamento em produto: a conta usa o valor informado; a base em produto depende de regulamento.</li>
+    <li><b>Compras:</b> o produtor informa só o valor pago. A conta supõe PIS/COFINS de 9,25% embutido em máquinas e em serviços e outras compras (sai do preço com a reforma) e zero nos demais grupos. Insumos agropecuários: redução de 60% (art. 138). Máquinas: alíquota zero para quem não é contribuinte (art. 110). O PIS/COFINS e o ICMS que ainda ficam no preço durante a transição são iguais nos dois cenários e não entram na comparação.</li>
+    <li><b>Vendas para empresas:</b> compradores que aproveitam crédito (contribuintes do regime regular), como trading, cooperativa, indústria e frigorífico. Sobre essas vendas vale o crédito presumido no cenário A.</li>
     <li><b>Insumos no cenário A:</b> o diferimento alcança só a parcela vendida a quem tem crédito do art. 168 (art. 138, §§ 2º e 3º); o restante paga 40% da alíquota.</li>
     <li><b>Fora da conta:</b> imposto de renda, folha, Funrural, Simples Nacional da PJ, créditos atuais de PIS/COFINS, efeito no preço de venda e correção do limite pelo IPCA.</li>
     <li><b>Fonte:</b> texto original da LC 214/2025. As alterações da LC 227/2026 sobre estes temas não foram conferidas.</li>
@@ -339,8 +334,8 @@ function atualizar(){
 }
 $('#btnCsv').onclick=()=>{ const R=ULT, q=v=>nf2.format(zero(v));
   const rows=[['R$ por ano',...R.anos.map(a=>a.ano)],
-   ['A: IBS/CBS nas compras',...R.anos.map(a=>q(a.A.novoC+a.A.arrPago))],['A: PIS/COFINS e ICMS no preço',...R.anos.map(a=>q(a.A.legC))],['A: crédito presumido',...R.anos.map(a=>q(-a.A.cp))],['A: arrendamento recebido',...R.anos.map(a=>q(a.A.arrImp))],['A: custo na cadeia',...R.anos.map(a=>q(a.A.cadeia))],
-   ['B: débitos',...R.anos.map(a=>q(a.B.deb))],['B: créditos',...R.anos.map(a=>q(-a.B.cred))],['B: a recolher',...R.anos.map(a=>q(a.B.saldo))],['B: PIS/COFINS e ICMS no preço',...R.anos.map(a=>q(a.B.legC))],['B: pago por quem não tem crédito',...R.anos.map(a=>q(a.B.debNC))],['B: custo na cadeia',...R.anos.map(a=>q(a.B.cadeia))],['A − B',...R.anos.map(a=>q(a.dif))]];
+   ['A: IBS/CBS nas compras',...R.anos.map(a=>q(a.A.novoC+a.A.arrPago))],['A: crédito presumido',...R.anos.map(a=>q(-a.A.cp))],['A: arrendamento recebido',...R.anos.map(a=>q(a.A.arrImp))],['A: custo na cadeia',...R.anos.map(a=>q(a.A.cadeia))],
+   ['B: débitos',...R.anos.map(a=>q(a.B.deb))],['B: créditos',...R.anos.map(a=>q(-a.B.cred))],['B: a recolher',...R.anos.map(a=>q(a.B.saldo))],['B: pago por quem não tem crédito',...R.anos.map(a=>q(a.B.debNC))],['B: custo na cadeia',...R.anos.map(a=>q(a.B.cadeia))],['A − B',...R.anos.map(a=>q(a.dif))]];
   const blob=new Blob(['﻿'+rows.map(r=>r.join(';')).join('\r\n')],{type:'text/csv'}), u=URL.createObjectURL(blob), l=document.createElement('a');
   l.href=u; l.download='calculadora_reforma_projecao.csv'; l.click(); URL.revokeObjectURL(u); };
 
