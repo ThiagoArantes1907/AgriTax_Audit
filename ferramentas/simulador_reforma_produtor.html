@@ -230,6 +230,29 @@ td .tag{font-size:10.5px;padding:1px 6px;border-radius:5px;background:var(--surf
 .score .kpi{flex:1;min-width:150px}
 
 .note{font-size:12px;color:var(--muted);margin-top:10px}
+.yp{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.yp-l{font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center}
+.yp-l select{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:5px 8px;max-width:320px}
+.yp-hint{font-size:11.5px;color:var(--muted)}
+.book-btn{position:relative}
+.book-btn .ck{position:absolute;top:6px;right:6px;width:16px;height:16px;border-radius:5px;border:1.5px solid var(--axis);font-style:normal;font-size:11px;line-height:13px;text-align:center;color:#fff;font-weight:700}
+.book-btn:has(.ck){padding-right:28px}
+.kc .kc-row{display:grid;grid-template-columns:38px 1fr auto;gap:8px;align-items:center;font-size:12px;margin-top:5px}
+.kc .kc-row span{color:var(--muted);font-variant-numeric:tabular-nums}
+.kc .kc-row b{font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+.kc-track{height:8px;background:var(--surface-2);border-radius:0 4px 4px 0;overflow:hidden}
+.kc-track i{display:block;height:100%;border-radius:0 4px 4px 0}
+.kc .d{margin-top:8px}
+.sec-t{font-size:15px;margin:0 0 10px;color:var(--char)}
+@media (max-width:760px){.yp{align-items:flex-start}}
+.hero{display:flex;flex-direction:column;justify-content:center;background:linear-gradient(135deg,color-mix(in srgb,var(--lime) 22%,var(--surface)),var(--surface) 70%);border-left:5px solid var(--lime)}
+.hero.hero-pay{background:linear-gradient(135deg,color-mix(in srgb,var(--neg) 16%,var(--surface)),var(--surface) 70%);border-left-color:var(--neg)}
+.hero-k{font-size:13px;color:var(--ink-2);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.hero-v{font-size:42px;font-weight:700;letter-spacing:-.02em;color:var(--char);margin:4px 0}
+.hero-d{font-size:13px;color:var(--ink-2)}
+#modeSeg button{font-size:13px;padding:6px 14px;font-weight:600}
+#modeSeg button span{display:inline-block;min-width:18px;margin-left:6px;font-size:11px;border-radius:999px;background:var(--surface-3);padding:0 6px;color:var(--ink-2)}
+#modeSeg button.on span{background:var(--lime);color:#1c1d1a}
 .empty{color:var(--muted);font-size:13px;padding:20px 0;text-align:center}
 .hidden{display:none!important}
 .err{background:color-mix(in srgb,var(--crit) 12%,var(--surface));border:1px solid color-mix(in srgb,var(--crit) 40%,transparent);color:var(--ink);border-radius:10px;padding:10px 14px;margin:16px auto;max-width:720px;font-size:13px}
@@ -449,7 +472,7 @@ td select.ovr{border-color:var(--brand);box-shadow:inset 0 0 0 1px var(--brand);
     <section data-view="param" class="hidden">
       <div class="grid g2">
         <div class="card">
-          <h2>Alíquotas de referência</h2><p class="sub">CBS: 11,3%, calculada pelo TCU em 28/10/2026 para 2027 (TC 006.529/2026-7). O Senado tem até 15/12/2026 para fixá-la por resolução; sem resolução, vale o cálculo do TCU. IBS: ainda sem número oficial (17,7% é a projeção da Fazenda; o Comitê Gestor usa 18,7%). Os dois campos são editáveis.</p>
+          <h2>Alíquotas de referência</h2><p class="sub">CBS: 11,3%, calculada pelo TCU em 28/10/2026 para 2027 (TC 006.529/2026-7). O Senado tem até 15/12/2026 para fixá-la por resolução; sem resolução, vale o cálculo do TCU. IBS: 18,7%, estimativa do Comitê Gestor na Resolução CGIBS nº 14/2026, usada como referência metodológica (ainda não há alíquota de referência oficial do IBS). Somada à CBS, dá 30,0%, acima da trava de 26,5% de 2033. Os dois campos são editáveis.</p>
           <div class="form" id="fAliq"></div>
         </div>
         <div class="card">
@@ -1014,11 +1037,11 @@ function aliq(ano,p){ // alíquotas cheias (antes de redução), em %
 }
 
 /* ===================== estado ===================== */
-const DEF={aliqVer:1,cbs:11.3,ibs:17.7,cpModo:'auto',cpCBS:0,cpIBS:0,credSimples:4,diferimento:true,maqZero:true,
+const DEF={aliqVer:2,cbs:11.3,ibs:18.7,cpModo:'auto',cpCBS:0,cpIBS:0,credSimples:4,diferimento:true,maqZero:true,
   combRed:0,cpEntradas:true,periodo:'auto',anualizar:true,limite:3600000};
 const st=lsGet();
-// alíquotas salvas antes do cálculo do TCU (28/10/2026) eram a projeção antiga: voltam ao padrão novo
-if(st.params&&st.params.aliqVer!==DEF.aliqVer){ delete st.params.cbs; delete st.params.ibs; }
+// alíquotas salvas antes da CBS do TCU (28/10/2026) e do IBS estimado pelo CGIBS (Res. 14/2026): voltam ao padrão novo
+if(st.params&&st.params.aliqVer!==DEF.aliqVer){ delete st.params.cbs; delete st.params.ibs; delete st.params.aliqVer; }
 const S={docs:new Map(),cancel:new Set(),arquivos:{xml:0,zip:0,rar:0,evento:0,ignorados:[],erros:[]},
   sel:new Set(),params:Object.assign({},DEF,st.params||{}),ovNcm:{},ovCfop:{},
   itens:[],res:null,unid:'r',tab:'geral',pgDoc:0};
@@ -1614,7 +1637,7 @@ function campo(id,rot,val,opt={}){
 function renderParam(){
   const p=S.params, B=S.res.base;
   $('#fAliq').innerHTML=campo('cbs','CBS — alíquota de referência',p.cbs,{ajuda:'Federal. TCU 28/10/2026: 11,3%. Em 2027–2028 é reduzida em 0,1 p.p. (art. 347), ou seja, 11,2% efetivos.'})+
-    campo('ibs','IBS — alíquota de referência (estadual + municipal)',p.ibs,{ajuda:'2027–2028: 0,05% + 0,05% (art. 344). 2029–2032: 10% a 40% da referência.'})+
+    campo('ibs','IBS — alíquota de referência (estadual + municipal)',p.ibs,{ajuda:'Estimativa do CGIBS (Res. 14/2026): 18,7%. 2027–2028: 0,05% + 0,05% (art. 344). 2029–2032: 10% a 40% da referência.'})+
     campo('combRed','Combustíveis — redução equivalente ao regime ad rem',p.combRed,{ajuda:'Regime específico (arts. 172 a 180). Ajuste quando as alíquotas por litro forem fixadas.'});
   $('#fCP').innerHTML=campo('cpModo','Origem do percentual',p.cpModo,{tipo:'sel',ops:[['auto','Estimar pela carga das compras do próprio produtor'],['manual','Informar manualmente']],
       ajuda:`Estimativa atual: CBS ${PC(B.cpAutoCBS)} + IBS ${PC(B.cpAutoIBS)} = ${PC(B.cpAutoCBS+B.cpAutoIBS)} sobre o valor da venda (regime pleno).`})+
@@ -1703,7 +1726,7 @@ function renderMetodo(){
 <h3>6. Transição (EC 132/2023 e LC 214/2025)</h3>
 <p>2026: CBS 0,9% + IBS 0,1%, compensáveis (efeito nulo). 2027–2028: CBS plena menos 0,1 p.p. (art. 347), IBS 0,05% + 0,05% (art. 344), PIS/COFINS extintos e IPI zerado. 2029–2032: IBS a 10%, 20%, 30% e 40% da referência (art. 361 e seguintes), ICMS a 90%, 80%, 70% e 60%. 2033: regime pleno.</p>
 <h3>Limitações</h3>
-<ul><li>CBS de referência: 11,3% (TCU, 28/10/2026, pendente de resolução do Senado até 15/12/2026). O mesmo valor é usado de 2029 a 2033, embora seja recalculado a cada ano. IBS de referência e percentuais do crédito presumido ainda não fixados: são parâmetros.</li>
+<ul><li>CBS de referência: 11,3% (TCU, 28/10/2026, pendente de resolução do Senado até 15/12/2026). O mesmo valor é usado de 2029 a 2033, embora seja recalculado a cada ano. IBS de referência: 18,7%, estimativa do Comitê Gestor (Resolução CGIBS nº 14/2026), sem alíquota oficial. Percentuais do crédito presumido ainda não fixados: são parâmetros.</li>
 <li>O teste do limite usa só a receita presente nos XMLs. Receitas sem NF-e e participações em outras PJ agropecuárias (art. 164, § 6º) precisam ser somadas.</li>
 <li>Produtor integrado (art. 164, § 1º), cooperativas (§ 5º e art. 168, § 9º) e regimes específicos exigem análise própria.</li>
 <li>Tributos legados embutidos nas compras são estimados pelo destaque na nota, não pela carga cumulativa real da cadeia.</li>

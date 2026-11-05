@@ -397,7 +397,7 @@ table.proj tr.aliq td{color:var(--ink-2)}
         <summary><b>5. Premissas</b> <span class="muted">alíquotas e crédito presumido</span></summary>
         <div class="form mt">
           <label class="fl"><span><b>CBS de referência</b><small>TCU, 28/10/2026: 11,3% para 2027. Pendente de resolução do Senado até 15/12/2026.</small></span><span class="inp"><input id="cbs" type="number" step="any">%</span></label>
-          <label class="fl"><span><b>IBS de referência</b><small>Sem número oficial. 17,7% é a projeção da Fazenda; o Comitê Gestor usa 18,7%.</small></span><span class="inp"><input id="ibs" type="number" step="any">%</span></label>
+          <label class="fl"><span><b>IBS de referência</b><small>Estimativa do Comitê Gestor: 18,7% (Resolução CGIBS nº 14/2026). Ainda não há alíquota oficial.</small></span><span class="inp"><input id="ibs" type="number" step="any">%</span></label>
           <label class="fl"><span><b>Crédito presumido ao comprador (art. 168)</b><small>O percentual oficial ainda não foi publicado. "Estimar" usa a carga das compras deste produtor.</small></span><select id="cpModo"><option value="auto">Estimar</option><option value="manual">Informar</option></select></label>
           <label class="fl" id="cpLinha"><span><b>Percentual sobre as vendas, regime pleno</b></span><span class="inp"><input id="cpPct" type="number" min="0" step="any">%</span></label>
           <label class="fl"><span><b>Crédito de fornecedor do Simples</b><small>Parcela de IBS/CBS que vem na nota, em regime pleno.</small></span><span class="inp"><input id="credSimples" type="number" min="0" step="any">%</span></label>
@@ -454,7 +454,7 @@ const COMPRAS=[
 ];
 const PADRAO=()=>({nome:'',nat:'PF',outrasPJ:0,ativs:[novaAtiv()],arrRec:0,arrIm:0,arrCont:100,arr487:false,arrPag:0,arrPagCob:'nao',
   compras:Object.fromEntries(COMPRAS.map(c=>[c.id,{v:0,pc:c.pc,icms:c.icms}])),
-  cbs:11.3,ibs:17.7,cpModo:'auto',cpPct:0,credSimples:4,combRed:0,tv:0,arrNoLimite:false});
+  aliqVer:2,cbs:11.3,ibs:18.7,cpModo:'auto',cpPct:0,credSimples:4,combRed:0,tv:0,arrNoLimite:false});
 function novaAtiv(forma='propria'){ return {forma,prod:'natura',v:0,cota:FORMAS[forma].cotaPad||100,pPJ:100,pExp:0,notas:'cota'}; }
 
 /* ===================== cálculo ===================== */
@@ -529,7 +529,7 @@ function calcular(E){
 let E=carregar();
 function carregar(){
   const base=PADRAO();
-  try{ const s=JSON.parse(localStorage.getItem(LS_KEY)||'null'); if(s) return Object.assign(base,s,{compras:Object.assign(base.compras,s.compras||{})}); }catch(e){}
+  try{ const s=JSON.parse(localStorage.getItem(LS_KEY)||'null'); if(s&&s.aliqVer!==base.aliqVer){ delete s.cbs; delete s.ibs; delete s.aliqVer; } if(s) return Object.assign(base,s,{compras:Object.assign(base.compras,s.compras||{})}); }catch(e){}
   return base;
 }
 function salvar(){ try{ localStorage.setItem(LS_KEY,JSON.stringify(E)); }catch(e){} }
@@ -666,7 +666,7 @@ function atualizar(){
   <details class="card mt"><summary><b>Método e limites da conta</b></summary><div class="prose mt">
     <ul>
     <li><b>Custo líquido na cadeia:</b> A = IBS/CBS sem crédito nas compras − crédito presumido ao comprador; B = IBS/CBS pago por quem não aproveita crédito. Compara o que fica de imposto no preço, não o que sai do caixa do produtor.</li>
-    <li><b>Transição:</b> 2026 é teste (sem efeito). 2027–2028: CBS menos 0,1 p.p. (art. 347) e IBS de 0,1% (art. 344). 2029–2032: IBS a 10%–40% da referência; ICMS a 90%–60%. 2033: regime pleno. A CBS de 11,3% é repetida depois de 2027, embora a lei mande recalcular todo ano.</li>
+    <li><b>Transição:</b> 2026 é teste (sem efeito). 2027–2028: CBS menos 0,1 p.p. (art. 347) e IBS de 0,1% (art. 344). 2029–2032: IBS a 10%–40% da referência; ICMS a 90%–60%. 2033: regime pleno. A CBS de 11,3% (TCU) é repetida depois de 2027, embora a lei mande recalcular todo ano. O IBS de 18,7% é a estimativa do Comitê Gestor (Resolução CGIBS nº 14/2026); somado à CBS, passa da trava de 26,5% prevista para 2033.</li>
     <li><b>Arrendamento:</b> redução de 70% (art. 261, parágrafo único). PF só é contribuinte com mais de R$ 240 mil e mais de 3 imóveis (art. 251, § 1º). Pagamento em produto: a conta usa o valor informado; a base em produto depende de regulamento.</li>
     <li><b>Insumos no cenário A:</b> o diferimento alcança só a parcela vendida a quem tem crédito do art. 168 (art. 138, §§ 2º e 3º); o restante paga 40% da alíquota.</li>
     <li><b>Fora da conta:</b> imposto de renda, folha, Funrural, Simples Nacional da PJ, créditos atuais de PIS/COFINS, efeito no preço de venda e correção do limite pelo IPCA.</li>
